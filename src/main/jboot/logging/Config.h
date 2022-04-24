@@ -1,13 +1,13 @@
 /*
- * This file is part of Jerry application server.
- * Copyright (C) 2020-2022 Sven Lukas
+ * This file is part of JBoot framework.
+ * Copyright (C) 2022 Sven Lukas
  *
- * Jerry is free software: you can redistribute it and/or modify
+ * JBoot is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as
  * published by the Free Software Foundation, either version 3 of
  * the License, or (at your option) any later version.
  *
- * Jerry is distributed in the hope that it will be useful,
+ * JBoot is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
@@ -16,17 +16,25 @@
  * License along with Jerry.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef JBOOT_BASICCONTEXT_H_
-#define JBOOT_BASICCONTEXT_H_
+#ifndef JBOOT_LOGGING_CONFIG_H_
+#define JBOOT_LOGGING_CONFIG_H_
+
+#include <boost/filesystem/path.hpp>
+
+#include <string>
 
 namespace jboot {
+namespace logging {
 
-class BasicContext {
+class Config final {
 public:
-	BasicContext();
-	virtual ~BasicContext();
+	Config() = delete;
+
+	static void loadData(const std::string& configuration);
+	static void loadFile(const boost::filesystem::path& filename);
 };
 
+} /* namespace logging */
 } /* namespace jboot */
 
-#endif /* JBOOT_BASICCONTEXT_H_ */
+#endif /* JBOOT_LOGGING_CONFIG_H_ */
