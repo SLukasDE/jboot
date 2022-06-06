@@ -92,6 +92,36 @@ Context::Context(const std::vector<std::pair<std::string, std::string>>& setting
 		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'show-stacktrace'");
 			}
 		}
+		else if(setting.first == "show-output") {
+			if(showOutput) {
+		        throw std::runtime_error("multiple definition of attribute 'show-output'.");
+			}
+
+			if(setting.second == "stdout") {
+				showOutput.reset(new ShowOutput(std::cout));
+			}
+			else if(setting.second == "stderr") {
+				showOutput.reset(new ShowOutput(std::cerr));
+			}
+			else if(setting.second == "trace") {
+				showOutput.reset(new ShowOutput(logger.trace));
+			}
+			else if(setting.second == "debug") {
+				showOutput.reset(new ShowOutput(logger.debug));
+			}
+			else if(setting.second == "info") {
+				showOutput.reset(new ShowOutput(logger.info));
+			}
+			else if(setting.second == "warn") {
+				showOutput.reset(new ShowOutput(logger.warn));
+			}
+			else if(setting.second == "error") {
+				showOutput.reset(new ShowOutput(logger.error));
+			}
+			else {
+		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'show-output'");
+			}
+		}
 		else if(setting.first == "catch-exception") {
 			if(hasCatchException) {
 		        throw std::runtime_error("multiple definition of attribute 'catch-exception'.");
@@ -129,6 +159,15 @@ Context::Context(const std::vector<std::pair<std::string, std::string>>& setting
 		}
     }
 
+	if(showException && !showOutput) {
+        throw std::runtime_error("Definition of 'show-exception' = true without definition of 'show-output'.");
+	}
+	if(showStacktrace && !showOutput) {
+        throw std::runtime_error("Definition of 'show-stacktrace' = true without definition of 'show-output'.");
+	}
+	if((!showException || !showStacktrace) && showOutput) {
+        throw std::runtime_error("Definition of 'show-output' without definition of 'show-exception' or 'show-stacktrace'.");
+	}
     if(continueOnException && !catchException) {
         throw std::runtime_error("Invalid use of 'continue-on-exception' = true and 'catch-exception' = false.");
     }
@@ -188,7 +227,17 @@ void Context::onEvent(const esl::object::Interface::Object& object) {
 			entry->onEvent(object);
 		}
 		catch(...) {
-			printException(logger.error, std::current_exception(), esl::logging::Location{});
+			if(showOutput) {
+				if(showOutput->ostream) {
+					printException(*showOutput->ostream, std::current_exception());
+				}
+				else if(showOutput->streamReal) {
+					printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
+				}
+				else if(showOutput->streamEmpty) {
+					printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
+				}
+			}
 
 			if(catchException) {
 				if(continueOnException == false) {
@@ -220,7 +269,17 @@ void Context::procedureRun(esl::object::ObjectContext& objectContext) {
 			entry->procedureRun(objectContext);
 		}
 		catch(...) {
-			printException(logger.error, std::current_exception(), esl::logging::Location{});
+			if(showOutput) {
+				if(showOutput->ostream) {
+					printException(*showOutput->ostream, std::current_exception());
+				}
+				else if(showOutput->streamReal) {
+					printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
+				}
+				else if(showOutput->streamEmpty) {
+					printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
+				}
+			}
 
 			if(catchException) {
 				addException(objectContext, std::current_exception());

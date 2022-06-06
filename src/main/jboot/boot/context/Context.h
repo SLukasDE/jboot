@@ -77,6 +77,25 @@ private:
 	bool catchException = true;
 	bool continueOnException = false;
 
+	struct ShowOutput {
+		ShowOutput(std::ostream& aOStream)
+		: ostream(&aOStream)
+		{}
+
+		ShowOutput(esl::logging::StreamReal& aStreamReal)
+		: streamReal(&aStreamReal)
+		{}
+
+		ShowOutput(esl::logging::StreamEmpty& aStreamEmpty)
+		: streamEmpty(&aStreamEmpty)
+		{}
+
+		std::ostream* ostream = nullptr;
+		esl::logging::StreamReal* streamReal = nullptr;
+		esl::logging::StreamEmpty* streamEmpty = nullptr;
+	};
+	std::unique_ptr<ShowOutput> showOutput;
+
 	std::vector<std::unique_ptr<Entry>> entries;
 	struct IdElement {
 		IdElement(std::unique_ptr<esl::object::Interface::Object> aObject)
