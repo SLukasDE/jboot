@@ -16,18 +16,38 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef JBOOT_MODULE_H_
-#define JBOOT_MODULE_H_
+#ifndef JBOOT_CONFIG_LOGGING_LEVELSETTING_H_
+#define JBOOT_CONFIG_LOGGING_LEVELSETTING_H_
 
-#include <esl/module/Module.h>
+#include <jboot/config/Config.h>
+
+#include <esl/logging/Level.h>
+
+#include <tinyxml2/tinyxml2.h>
+
+#include <string>
+#include <ostream>
 
 namespace jboot {
+namespace config {
+namespace logging {
 
-struct Module final {
-	Module() = delete;
-	static void install(esl::module::Module& module);
+class LevelSetting : public Config {
+public:
+	LevelSetting(const std::string& fileName, const tinyxml2::XMLElement& element);
+
+	esl::logging::Level getLevel() const;
+	const std::string& getScope() const;
+
+	void save(std::ostream& oStream, std::size_t spaces) const;
+
+private:
+	esl::logging::Level level = esl::logging::Level::SILENT;
+	std::string scope;
 };
 
+} /* namespace logging */
+} /* namespace config */
 } /* namespace jboot */
 
-#endif /* JBOOT_MODULE_H_ */
+#endif /* JBOOT_CONFIG_LOGGING_LEVELSETTING_H_ */

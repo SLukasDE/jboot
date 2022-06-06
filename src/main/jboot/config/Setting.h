@@ -16,12 +16,31 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <jboot/Module.h>
+#ifndef JBOOT_CONFIG_SETTING_H_
+#define JBOOT_CONFIG_SETTING_H_
 
-#include <esl/Module.h>
+#include <jboot/config/Config.h>
 
-extern "C" void esl__module__library__install(esl::module::Module* module) {
-	if(module != nullptr) {
-		jboot::Module::install(*module);
-	}
-}
+#include <tinyxml2/tinyxml2.h>
+
+#include <string>
+#include <ostream>
+
+namespace jboot {
+namespace config {
+
+class Setting : public Config {
+public:
+	Setting(const std::string& fileName, const tinyxml2::XMLElement& element, bool isParameter);
+
+	void saveParameter(std::ostream& oStream, std::size_t spaces) const;
+
+	std::string key;
+	std::string value;
+	std::string language;
+};
+
+} /* namespace config */
+} /* namespace jboot */
+
+#endif /* JBOOT_CONFIG_SETTING_H_ */

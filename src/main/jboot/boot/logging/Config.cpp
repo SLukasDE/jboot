@@ -16,12 +16,24 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <jboot/Module.h>
+#include <jboot/boot/logging/Config.h>
 
-#include <esl/Module.h>
+#include <jboot/config/logging/Logger.h>
 
-extern "C" void esl__module__library__install(esl::module::Module* module) {
-	if(module != nullptr) {
-		jboot::Module::install(*module);
-	}
+namespace jboot {
+namespace boot {
+namespace logging {
+
+void Config::loadData(const std::string& configuration) {
+	jboot::config::logging::Logger loggerConfig(configuration);
+	loggerConfig.install();
 }
+
+void Config::loadFile(const boost::filesystem::path& filename) {
+	jboot::config::logging::Logger loggerConfig(filename);
+	loggerConfig.install();
+}
+
+} /* namespace logging */
+} /* namespace boot */
+} /* namespace jboot */

@@ -16,18 +16,33 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef JBOOT_MODULE_H_
-#define JBOOT_MODULE_H_
+#ifndef JBOOT_CONFIG_XMLEXCEPTION_H_
+#define JBOOT_CONFIG_XMLEXCEPTION_H_
 
-#include <esl/module/Module.h>
+#include <jboot/config/Config.h>
+
+#include <tinyxml2/tinyxml2.h>
+
+#include <string>
+#include <exception>
 
 namespace jboot {
+namespace config {
 
-struct Module final {
-	Module() = delete;
-	static void install(esl::module::Module& module);
+class XMLException : public std::exception {
+public:
+	explicit XMLException(const std::string& fileName, int lineNo, tinyxml2::XMLError xmlError);
+	explicit XMLException(const std::string& fileName, int lineNo, const std::string& message);
+	explicit XMLException(const Config& config, tinyxml2::XMLError xmlError);
+	explicit XMLException(const Config& config, const std::string& message);
+
+	const char* what() const noexcept override;
+
+private:
+	const std::string fullMessage;
 };
 
+} /* namespace config */
 } /* namespace jboot */
 
-#endif /* JBOOT_MODULE_H_ */
+#endif /* JBOOT_CONFIG_XMLEXCEPTION_H_ */

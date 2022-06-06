@@ -16,12 +16,29 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <jboot/Module.h>
+#ifndef JBOOT_CONFIG_CONTEXT_ENTRY_H_
+#define JBOOT_CONFIG_CONTEXT_ENTRY_H_
 
-#include <esl/Module.h>
+#include <jboot/config/Config.h>
+#include <jboot/boot/context/Context.h>
 
-extern "C" void esl__module__library__install(esl::module::Module* module) {
-	if(module != nullptr) {
-		jboot::Module::install(*module);
-	}
-}
+#include <string>
+#include <ostream>
+
+namespace jboot {
+namespace config {
+namespace context {
+
+class Entry : public Config {
+public:
+	using Config::Config;
+
+	virtual void save(std::ostream& oStream, std::size_t spaces) const = 0;
+	virtual void install(boot::context::Context& context) const = 0;
+};
+
+} /* namespace context */
+} /* namespace config */
+} /* namespace jboot */
+
+#endif /* JBOOT_CONFIG_CONTEXT_ENTRY_H_ */
