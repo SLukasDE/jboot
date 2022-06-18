@@ -40,9 +40,9 @@ Entry::Entry(esl::object::Interface::Object& refObject)
 { }
 
 
-void Entry::initializeContext(esl::object::ObjectContext& objectContext) {
+void Entry::initializeContext(esl::object::Context& context) {
 	if(initializeContextPtr) {
-		initializeContextPtr->initializeContext(objectContext);
+		initializeContextPtr->initializeContext(context);
 		initializeContextPtr = nullptr;
 	}
 
@@ -59,9 +59,9 @@ void Entry::onEvent(const esl::object::Interface::Object& object) {
 	}
 }
 
-void Entry::procedureRun(esl::object::ObjectContext& objectContext) {
+void Entry::procedureRun(esl::object::Context& context) {
 	if(procedure) {
-		procedure->procedureRun(objectContext);
+		procedure->procedureRun(context);
 	}
 
 	/* wurde schon oben aufgerufen, weil jeder ESL-Boot-Context das Interface "procedure" realisiert

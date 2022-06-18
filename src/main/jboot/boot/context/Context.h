@@ -27,7 +27,7 @@
 #include <esl/logging/Location.h>
 #include <esl/object/InitializeContext.h>
 #include <esl/object/Interface.h>
-#include <esl/object/ObjectContext.h>
+#include <esl/object/Context.h>
 #include <esl/processing/procedure/Interface.h>
 
 #include <boost/filesystem/path.hpp>
@@ -60,9 +60,9 @@ public:
 
 	void onEvent(const esl::object::Interface::Object& object) override;
 	std::set<std::string> getObjectIds() const override;
-	void procedureRun(esl::object::ObjectContext& objectContext) override;
+	void procedureRun(esl::object::Context& context) override;
 
-	void initializeContext(esl::object::ObjectContext& objectContext) override;
+	void initializeContext(esl::object::Context&) override;
 
 protected:
 	esl::object::Interface::Object* findRawObject(const std::string& id) override;

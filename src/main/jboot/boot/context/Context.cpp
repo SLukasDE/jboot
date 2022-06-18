@@ -35,15 +35,15 @@ namespace context {
 namespace {
 Logger logger("jboot::boot::context::Context");
 
-void addException(esl::object::ObjectContext& objectContext, std::exception_ptr exceptionPtr) {
-	esl::object::Interface::Object* objectPtr = objectContext.findObject<esl::object::Interface::Object>("exception");
+void addException(esl::object::Context& context, std::exception_ptr exceptionPtr) {
+	esl::object::Interface::Object* objectPtr = context.findObject<esl::object::Interface::Object>("exception");
 	esl::object::Value<std::exception_ptr>* exceptionObjectPtr = dynamic_cast<esl::object::Value<std::exception_ptr>*>(objectPtr);
 
 	if(exceptionObjectPtr) {
 		*exceptionObjectPtr = std::current_exception();
 	}
 	else if(objectPtr == nullptr) {
-		objectContext.addObject("exception", std::unique_ptr<esl::object::Value<std::exception_ptr>>(new esl::object::Value<std::exception_ptr>(std::current_exception())));
+		context.addObject("exception", std::unique_ptr<esl::object::Value<std::exception_ptr>>(new esl::object::Value<std::exception_ptr>(std::current_exception())));
 	}
 }
 } /* anonymous namespace */
@@ -52,8 +52,7 @@ std::unique_ptr<esl::boot::context::Interface::Context> Context::create(const st
 	return std::unique_ptr<esl::boot::context::Interface::Context>(new Context(settings));
 }
 
-Context::Context(const std::vector<std::pair<std::string, std::string>>& settings)
-{
+Context::Context(const std::vector<std::pair<std::string, std::string>>& settings) {
 	bool hasShowException = false;
 	bool hasShowStacktrace = false;
 	bool hasCatchException = false;
@@ -261,12 +260,12 @@ std::set<std::string> Context::getObjectIds() const {
 	return rv;
 }
 
-void Context::procedureRun(esl::object::ObjectContext& objectContext) {
+void Context::procedureRun(esl::object::Context& context) {
 	initializeContext(*this);
 
 	for(auto& entry : entries) {
 		try {
-			entry->procedureRun(objectContext);
+			entry->procedureRun(context);
 		}
 		catch(...) {
 			if(showOutput) {
@@ -282,7 +281,7 @@ void Context::procedureRun(esl::object::ObjectContext& objectContext) {
 			}
 
 			if(catchException) {
-				addException(objectContext, std::current_exception());
+				addException(context, std::current_exception());
 
 				if(continueOnException == false) {
 					break;
@@ -294,13 +293,13 @@ void Context::procedureRun(esl::object::ObjectContext& objectContext) {
 		}
 	}
 
-	ReturnCodeObject* returnCodeObject = objectContext.findObject<ReturnCodeObject>("return-code");
+	ReturnCodeObject* returnCodeObject = context.findObject<ReturnCodeObject>("return-code");
 	if(returnCodeObject) {
 		returnCode = **returnCodeObject;
 	}
 }
 
-void Context::initializeContext(esl::object::ObjectContext& objectContext) {
+void Context::initializeContext(esl::object::Context&) {
 	for(auto& entry : entries) {
 		entry->initializeContext(*this);
 	}

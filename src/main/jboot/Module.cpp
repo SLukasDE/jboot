@@ -19,11 +19,13 @@
 #include <jboot/Module.h>
 #include <jboot/boot/context/Context.h>
 #include <jboot/boot/logging/Config.h>
+#include <jboot/processing/task/TaskFactory.h>
 
 #include <eslx/Module.h>
 
 #include <esl/boot/context/Interface.h>
 #include <esl/boot/logging/Interface.h>
+#include <esl/processing/task/Interface.h>
 #include <esl/Module.h>
 #include <esl/logging/appender/Interface.h>
 #include <esl/logging/layout/Interface.h>
@@ -37,29 +39,48 @@ void Module::install(esl::module::Module& module) {
 	eslx::Module::install(module);
 
 	module.addInterface(esl::boot::context::Interface::createInterface(
-			"jboot/context",
+			"jboot@/esl/boot/context",
+//			"jboot@/esl/boot/context/Context",
+//			"jboot/context",
 			&boot::context::Context::create));
 
 	module.addInterface(esl::boot::logging::Interface::createInterface(
-			"jboot/logging",
+			"jboot@/esl/boot/logging",
+//			"jboot@/esl/boot/logging/Config",
+//			"jboot/logging",
 			&boot::logging::Config::loadData, &boot::logging::Config::loadFile));
+
+	module.addInterface(esl::processing::task::Interface::createInterface(
+			"jboot@/esl/processing/task",
+//			"jboot@/esl/processing/task/TaskFactory",
+//			"jboot/task",
+			&processing::task::TaskFactory::create));
+
 #if 1
 	/* ************************* *
 	 * builtin logging appenders *
 	 * ************************* */
 	module.addInterface(esl::logging::appender::Interface::createInterface(
-			"jboot/membuffer",
+			"jboot:MemBuffer@/esl/logging/appender",
+//			"jboot/membuffer",
 			esl::getModule().getInterface<esl::logging::appender::Interface>("eslx/membuffer").createAppender));
 
 	module.addInterface(esl::logging::appender::Interface::createInterface(
-			"jboot/ostream",
+			"jboot:OStream@/esl/logging/appender",
+//			"jboot/ostream",
 			esl::getModule().getInterface<esl::logging::appender::Interface>("eslx/ostream").createAppender));
+
+	module.addInterface(esl::logging::appender::Interface::createInterface(
+			"jboot:Humio@/esl/logging/appender",
+//			"jboot/ostream",
+			esl::getModule().getInterface<esl::logging::appender::Interface>("eslx:Humio@/esl/logging/appender").createAppender));
 
 	/* *********************** *
 	 * builtin logging layouts *
 	 * *********************** */
 	module.addInterface(esl::logging::layout::Interface::createInterface(
-			"jboot/default",
+			"jboot:Default@/esl/logging/layout",
+//			"jboot/default",
 			esl::getModule().getInterface<esl::logging::layout::Interface>("eslx/default").createLayout));
 #endif
 }

@@ -22,7 +22,7 @@
 #include <esl/object/Event.h>
 #include <esl/object/Interface.h>
 #include <esl/object/InitializeContext.h>
-#include <esl/object/ObjectContext.h>
+#include <esl/object/Context.h>
 #include <esl/processing/procedure/Interface.h>
 
 #include <memory>
@@ -36,9 +36,9 @@ public:
 	Entry(std::unique_ptr<esl::object::Interface::Object> object);
 	Entry(esl::object::Interface::Object& refObject);
 
-	void initializeContext(esl::object::ObjectContext& objectContext);
+	void initializeContext(esl::object::Context& context);
 	void onEvent(const esl::object::Interface::Object& object);
-	void procedureRun(esl::object::ObjectContext& objectContext);
+	void procedureRun(esl::object::Context& context);
 	void procedureCancel();
 
 private:
