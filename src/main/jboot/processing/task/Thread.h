@@ -30,16 +30,15 @@ class TaskFactory;
 
 class Thread {
 public:
-	Thread(TaskFactory& taskFactory);
-	~Thread();
-
-	void run();
+	static void create(TaskFactory& taskFactory);
 
 private:
 	TaskFactory& taskFactory;
 
-	std::mutex threadMutex;
-	std::thread thread;
+	Thread(TaskFactory& taskFactory);
+	~Thread();
+
+	static void run(TaskFactory& taskFactory);
 };
 
 } /* namespace task */

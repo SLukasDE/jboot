@@ -22,27 +22,48 @@ namespace jboot {
 namespace processing {
 namespace task {
 
-std::unique_ptr<esl::processing::task::Interface::TaskFactory> TaskFactory::create(const std::vector<std::pair<std::string, std::string>>& settings) {
-	return std::unique_ptr<esl::processing::task::Interface::TaskFactory>(new TaskFactory(settings));
+std::unique_ptr<esl::processing::task::ITaskFactory> TaskFactory::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::processing::task::ITaskFactory>(new TaskFactory(settings));
 }
 
 TaskFactory::TaskFactory(const std::vector<std::pair<std::string, std::string>>& settings) {
     for(const auto& setting : settings) {
 		if(setting.first == "max-threads") {
-			if(maxThreads == 0) {
+			if(threadsMax.load() > 0) {
 		        throw std::runtime_error("multiple definition of attribute 'max-threads'.");
 			}
-			maxThreads = std::stol(setting.second);
-			if(maxThreads <= 0) {
-	            throw std::runtime_error("jboot: Invalid value \"" + std::to_string(maxThreads) + "\" for attribute 'max-threads'.");
+
+			int tmpMaxThreads;
+			try {
+				tmpMaxThreads = std::stol(setting.second);
 			}
+			catch(...) {
+	            throw std::runtime_error("jboot: Invalid value \"" + setting.second + "\" for attribute 'max-threads'.");
+			}
+
+			if(tmpMaxThreads <= 0 || tmpMaxThreads > 1000) {
+	            throw std::runtime_error("jboot: Invalid value \"" + std::to_string(tmpMaxThreads) + "\" for attribute 'max-threads'. Value has to be between 1 and 1000.");
+			}
+			threadsMax.store(static_cast<unsigned int>(tmpMaxThreads));
+		}
+		else if(setting.first == "thread-timeout-ms") {
+			if(hasThreadTimeout) {
+		        throw std::runtime_error("multiple definition of attribute 'thread-timeout-ms'.");
+			}
+			hasThreadTimeout = true;
+			//long threadTimeoutMs = static_cast<int>(std::stol(setting.second));
+			long threadTimeoutMs = std::stol(setting.second);
+			if(threadTimeoutMs < 1) {
+		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for key 'thread-timeout-ms'. Value must be > 0");
+			}
+			threadTimeout = std::chrono::milliseconds(threadTimeoutMs);
 		}
 		else {
             throw std::runtime_error("unknown attribute '\"" + setting.first + "\"'.");
 		}
     }
 
-	if(maxThreads == 0) {
+	if(threadsMax.load() == 0) {
         throw std::runtime_error("Definition of 'max-threads' is missing.");
 	}
 
@@ -51,41 +72,61 @@ TaskFactory::TaskFactory(const std::vector<std::pair<std::string, std::string>>&
 TaskFactory::~TaskFactory() {
 	{
 		std::lock_guard<std::mutex> lockQueueMutex(queueMutex);
+
+		threadsMax.store(0);
 		for(auto& entry : queue) {
-			entry.second->setStatus(esl::processing::task::Status::canceled);
+			entry.first->setStatus(esl::processing::task::Status::canceled);
 		}
 		queue.clear();
 	}
+
 	threadsCV.notify_all();
+
+	std::unique_lock<std::mutex> lockThreadsMutex(threadsMutex);
+	threadsFinishedCV.wait(lockThreadsMutex, [&]() {
+		return threadsAvailable == 0;
+	});
 }
 
 esl::processing::task::Task TaskFactory::createTask(esl::processing::task::Descriptor descriptor) {
-	Binding* bindingPtr;
 	std::shared_ptr<esl::processing::task::Task::Binding> binding;
-	{
-		std::unique_ptr<Binding> bindingTmp(new Binding(*this, std::move(descriptor)));
-		bindingPtr = bindingTmp.get();
-		binding = std::shared_ptr<esl::processing::task::Task::Binding>(bindingTmp.release());
-	}
 
 	{
 		std::lock_guard<std::mutex> lockQueueMutex(queueMutex);
-		queue.push_back(std::make_pair(binding, bindingPtr));
+
+		std::unique_ptr<Binding> bindingTmp(new Binding(*this, std::move(descriptor)));
+		Binding* bindingPtr = bindingTmp.get();
+		binding = std::shared_ptr<esl::processing::task::Task::Binding>(bindingTmp.release());
+		queue.push_back(std::make_pair(bindingPtr, binding));
 	}
 
-	/*
+
 	{
 		std::lock_guard<std::mutex> lockThreadMutex(threadsMutex);
-		threadsCV.notify_one();
+		if(threadsProcessing.size() < threadsMax) {
+			Thread::create(*this);
+		}
 	}
-	*/
+
 	threadsCV.notify_one();
 
 	return esl::processing::task::Task(binding);
 }
 
 std::vector<esl::processing::task::Task> TaskFactory::getTasks() const {
-	return std::vector<esl::processing::task::Task>();
+	std::vector<esl::processing::task::Task> tasks;
+
+	std::lock_guard<std::mutex> lockQueueMutex(queueMutex);
+	for(auto& entry : queue) {
+		tasks.push_back(esl::processing::task::Task(entry.second));
+	}
+
+	std::lock_guard<std::mutex> lockThreadMutex(threadsMutex);
+	for(auto& entry : threadsProcessing) {
+		tasks.push_back(esl::processing::task::Task(entry.second));
+	}
+
+	return tasks;
 }
 
 } /* namespace task */

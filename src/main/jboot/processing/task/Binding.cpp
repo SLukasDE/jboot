@@ -17,6 +17,7 @@
  */
 
 #include <jboot/processing/task/Binding.h>
+#include <jboot/object/Context.h>
 #include <jboot/processing/task/TaskFactory.h>
 
 namespace jboot {
@@ -25,31 +26,48 @@ namespace task {
 
 Binding::Binding(TaskFactory& aTaskFactory, esl::processing::task::Descriptor aDescriptor)
 : taskFactory(&aTaskFactory),
-  descriptor(std::move(aDescriptor))
+  descriptor(std::move(aDescriptor)),
+  event(dynamic_cast<esl::object::IEvent*>(descriptor.procedure.get()))
 { }
 
-void Binding::sendEvent(const esl::object::Interface::Object& object) {
+void Binding::sendEvent(const esl::object::IObject& object) {
+	if(event) {
+		event->onEvent(object);
+	}
 }
 
 void Binding::cancel() {
-	std::lock_guard<std::mutex> lockTaskMutext(taskFactoryMutex);
-	if(taskFactory) {
+	std::lock_guard<std::mutex> lockTaskFactory(taskFactoryMutex);
+
+	if(taskFactory == nullptr) {
+		return;
+	}
+
+	{
 		std::lock_guard<std::mutex> lockQueueMutext(taskFactory->queueMutex);
 		for(auto iter = taskFactory->queue.begin(); iter != taskFactory->queue.end(); ++iter) {
-			if(iter->second == this) {
+			if(iter->first == this) {
 				taskFactory->queue.erase(iter);
+				setStatus(esl::processing::task::Status::canceled);
 				return;
 			}
+		}
+	}
+
+	if(descriptor.procedure) {
+		std::lock_guard<std::mutex> lockThreadsMutext(taskFactory->threadsMutex);
+		if(taskFactory->threadsProcessing.count(this) != 0) {
+			descriptor.procedure->procedureCancel();
 		}
 	}
 }
 
 esl::processing::task::Status Binding::getStatus() const {
-	return status;
+	return status.load();
 }
 
-esl::object::Context* Binding::getContext() const {
-	switch(status) {
+esl::object::IContext* Binding::getContext() const {
+	switch(getStatus()) {
 	case esl::processing::task::Status::canceled:
 	case esl::processing::task::Status::exception:
 	case esl::processing::task::Status::done:
@@ -66,27 +84,42 @@ std::exception_ptr Binding::getException() const {
 }
 
 void Binding::setStatus(esl::processing::task::Status aStatus) {
-	if(status == aStatus) {
+	if(status.exchange(aStatus) == aStatus) {
 		return;
 	}
 
-	status = aStatus;
-
-	if(status == esl::processing::task::Status::canceled) {
+	if(aStatus == esl::processing::task::Status::canceled) {
+		std::lock_guard<std::mutex> lockTaskFactory(taskFactoryMutex);
 		taskFactory = nullptr;
 	}
 
 	if(descriptor.onStateChanged) {
-		descriptor.onStateChanged(status);
+		descriptor.onStateChanged(aStatus);
 	}
 }
 
-void Binding::run() {
-	status = esl::processing::task::Status::running;
-	descriptor.procedure->procedureRun(*descriptor.context);
-	status = esl::processing::task::Status::done;
+void Binding::run() noexcept {
+	try {
+		setStatus(esl::processing::task::Status::running);
+		if(!descriptor.context) {
+			descriptor.context.reset(new object::Context);
+		}
+		if(descriptor.procedure) {
+			descriptor.procedure->procedureRun(*descriptor.context);
+		}
+		setStatus(esl::processing::task::Status::done);
+	}
+	catch(...) {
+		exceptionPtr = std::current_exception();
+		try {
+			setStatus(esl::processing::task::Status::exception);
+		} catch(...) { }
+	}
+
+	std::lock_guard<std::mutex> lockTaskFactory(taskFactoryMutex);
 	taskFactory = nullptr;
 }
+
 } /* namespace task */
 } /* namespace processing */
 } /* namespace jboot */

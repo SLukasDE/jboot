@@ -16,31 +16,34 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <esl/object/Context.h>
+#include <esl/object/IContext.h>
+#include <esl/object/IObject.h>
 
+#include <map>
+#include <memory>
 #include <set>
 #include <string>
-#include <memory>
 
-#ifndef JBOOT_PROCESSING_TASK_EMPTYCONTEXT_H_
-#define JBOOT_PROCESSING_TASK_EMPTYCONTEXT_H_
+#ifndef JBOOT_OBJECT_CONTEXT_H_
+#define JBOOT_OBJECT_CONTEXT_H_
 
 namespace jboot {
-namespace processing {
-namespace task {
+namespace object {
 
-class EmptyContext : public esl::object::Context {
+class Context : public esl::object::IContext {
 public:
 	std::set<std::string> getObjectIds() const override;
 
 protected:
-	void addRawObject(const std::string& id, std::unique_ptr<esl::object::Interface::Object> object) override;
-	esl::object::Interface::Object* findRawObject(const std::string& id) override;
-	const esl::object::Interface::Object* findRawObject(const std::string& id) const override;
+	void addRawObject(const std::string& id, std::unique_ptr<esl::object::IObject> object) override;
+	esl::object::IObject* findRawObject(const std::string& id) override;
+	const esl::object::IObject* findRawObject(const std::string& id) const override;
+
+private:
+	std::map<std::string, std::unique_ptr<esl::object::IObject>> objects;
 };
 
-} /* namespace task */
-} /* namespace processing */
+} /* namespace object */
 } /* namespace jboot */
 
-#endif /* JBOOT_PROCESSING_TASK_EMPTYCONTEXT_H_ */
+#endif /* JBOOT_OBJECT_CONTEXT_H_ */

@@ -19,7 +19,7 @@
 #include <jboot/config/context/Object.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/module/Interface.h>
+#include <esl/plugin/Registry.h>
 
 #include <utility>
 
@@ -134,15 +134,15 @@ void Object::install(boot::context::Context& context) const {
 	}
 }
 
-std::unique_ptr<esl::object::Interface::Object> Object::create() const {
+std::unique_ptr<esl::object::IObject> Object::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::object::Interface::Object> eslObject;
+	std::unique_ptr<esl::object::IObject> eslObject;
 	try {
-		eslObject = esl::getModule().getInterface<esl::object::Interface>(implementation).createObject(eslSettings);
+		eslObject = esl::plugin::Registry::get().getPlugin<esl::object::IObject::Plugin>(implementation).create(eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());

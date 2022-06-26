@@ -19,20 +19,27 @@
 #ifndef JBOOT_BOOT_LOGGING_CONFIG_H_
 #define JBOOT_BOOT_LOGGING_CONFIG_H_
 
+#include <esl/boot/logging/IConfig.h>
+
 #include <boost/filesystem/path.hpp>
 
+#include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace jboot {
 namespace boot {
 namespace logging {
 
-class Config final {
+class Config : public esl::boot::logging::IConfig {
 public:
-	Config() = delete;
+	static std::unique_ptr<esl::boot::logging::IConfig> create(const std::vector<std::pair<std::string, std::string>>& settings);
 
-	static void loadData(const std::string& configuration);
-	static void loadFile(const boost::filesystem::path& filename);
+	Config(const std::vector<std::pair<std::string, std::string>>& settings);
+
+	void loadData(const std::string& configuration) override;
+	void loadFile(const boost::filesystem::path& filename) override;
 };
 
 } /* namespace logging */

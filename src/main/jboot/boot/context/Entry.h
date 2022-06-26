@@ -19,11 +19,11 @@
 #ifndef JBOOT_BOOT_CONTEXT_ENTRY_H_
 #define JBOOT_BOOT_CONTEXT_ENTRY_H_
 
-#include <esl/object/Event.h>
-#include <esl/object/Interface.h>
-#include <esl/object/InitializeContext.h>
-#include <esl/object/Context.h>
-#include <esl/processing/procedure/Interface.h>
+#include <esl/object/IEvent.h>
+#include <esl/object/IObject.h>
+#include <esl/object/IInitializeContext.h>
+#include <esl/object/IContext.h>
+#include <esl/processing/procedure/IProcedure.h>
 
 #include <memory>
 
@@ -33,22 +33,22 @@ namespace context {
 
 class Entry {
 public:
-	Entry(std::unique_ptr<esl::object::Interface::Object> object);
-	Entry(esl::object::Interface::Object& refObject);
+	Entry(std::unique_ptr<esl::object::IObject> object);
+	Entry(esl::object::IObject& refObject);
 
-	void initializeContext(esl::object::Context& context);
-	void onEvent(const esl::object::Interface::Object& object);
-	void procedureRun(esl::object::Context& context);
+	void initializeContext(esl::object::IContext& context);
+	void onEvent(const esl::object::IObject& object);
+	void procedureRun(esl::object::IContext& context);
 	void procedureCancel();
 
 private:
-	std::unique_ptr<esl::object::Interface::Object> object;
-	esl::object::Interface::Object& refObject;
+	std::unique_ptr<esl::object::IObject> object;
+	esl::object::IObject& refObject;
 
-	esl::object::InitializeContext* initializeContextPtr = nullptr;
-	//Context* context = nullptr;
-	esl::object::Event* event = nullptr;
-	esl::processing::procedure::Interface::Procedure* procedure = nullptr;
+	esl::object::IInitializeContext* initializeContextPtr = nullptr;
+	//IContext* context = nullptr;
+	esl::object::IEvent* event = nullptr;
+	esl::processing::procedure::IProcedure* procedure = nullptr;
 };
 
 } /* namespace context */

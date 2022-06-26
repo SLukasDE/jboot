@@ -19,8 +19,8 @@
 #include <jboot/config/logging/Layout.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/module/Interface.h>
-#include <esl/logging/layout/Layout.h>
+#include <esl/plugin/Registry.h>
+#include <esl/logging/ILayout.h>
 
 #include <utility>
 
@@ -89,14 +89,14 @@ void Layout::save(std::ostream& oStream, std::size_t spaces) const {
 	oStream << makeSpaces(spaces) << "</layout>\n";
 }
 
-std::unique_ptr<esl::logging::layout::Interface::Layout> Layout::create() const {
+std::unique_ptr<esl::logging::ILayout> Layout::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 
 	for(auto const& setting : parameters) {
 		eslSettings.push_back(std::make_pair(setting.key, setting.value));
 	}
 
-	return std::unique_ptr<esl::logging::layout::Interface::Layout>(new esl::logging::layout::Layout(eslSettings, implementation));
+	return esl::plugin::Registry::get().getPlugin<esl::logging::ILayout::Plugin>(implementation).create(eslSettings);
 }
 
 void Layout::parseInnerElement(const tinyxml2::XMLElement& element) {

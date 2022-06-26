@@ -23,7 +23,7 @@
 #include <jboot/config/Setting.h>
 #include <jboot/boot/context/Context.h>
 
-#include <esl/object/Interface.h>
+#include <esl/object/IObject.h>
 
 #include <tinyxml2/tinyxml2.h>
 
@@ -49,7 +49,7 @@ private:
 	std::string refId;
 	std::vector<Setting> settings;
 
-	std::unique_ptr<esl::object::Interface::Object> create() const;
+	std::unique_ptr<esl::object::IObject> create() const;
 	void parseInnerElement(const tinyxml2::XMLElement& element);
 };
 

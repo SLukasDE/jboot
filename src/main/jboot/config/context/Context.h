@@ -24,9 +24,9 @@
 #include <jboot/config/logging/Logger.h>
 #include <jboot/boot/context/Context.h>
 
-#include <esl/logging/appender/Interface.h>
-#include <esl/logging/layout/Interface.h>
-#include <esl/module/Library.h>
+#include <esl/logging/IAppender.h>
+#include <esl/logging/ILayout.h>
+#include <esl/plugin/Library.h>
 
 #include <tinyxml2/tinyxml2.h>
 
@@ -63,13 +63,13 @@ private:
 
 	tinyxml2::XMLDocument xmlDocument;
 
-	std::vector<std::pair<std::string, esl::module::Library*>> libraries;
+	std::vector<std::pair<std::string, esl::plugin::Library*>> libraries;
 	std::vector<std::unique_ptr<Entry>> entries;
 
 	std::set<std::string> filesLoaded;
 	std::vector<logging::Logger> eslLoggers;
 
-	std::unique_ptr<esl::object::Interface::Object> create() const;
+	std::unique_ptr<esl::object::IObject> create() const;
 	void parseInnerElement(const tinyxml2::XMLElement& element);
 
 	void loadXML(const tinyxml2::XMLElement& element);

@@ -21,6 +21,7 @@
 #include <jboot/Logger.h>
 
 #include <esl/logging/Logger.h>
+#include <esl/logging/Config.h>
 
 namespace jboot {
 namespace config {
@@ -119,7 +120,7 @@ void Logger::install() const {
 	 * Install level settings *
 	 * ***************** */
 	for(const auto& levelSetting : settings) {
-		esl::logging::setLevel(levelSetting.getLevel(), levelSetting.getScope());
+		esl::logging::Config::setLevel(levelSetting.getLevel(), levelSetting.getScope());
 	}
 }
 

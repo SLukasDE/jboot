@@ -19,12 +19,15 @@
 #ifndef JBOOT_LOGGER_H_
 #define JBOOT_LOGGER_H_
 
-#include <esl/logging/Logger.h>
+#include <esl/logging/IAppender.h>
+#include <esl/logging/ILayout.h>
 #include <esl/logging/Level.h>
-#include <esl/logging/layout/Interface.h>
-#include <esl/logging/appender/Interface.h>
+#include <esl/logging/Logger.h>
+#include <esl/logging/StreamReal.h>
+#include <esl/logging/StreamEmpty.h>
 
 #include <memory>
+#include <ostream>
 #include <string>
 
 namespace jboot {
@@ -39,9 +42,11 @@ public:
 	using esl::logging::Logger<esl::logging::Level::ERROR>::Logger;
 #endif
 
-	static void flush();
-	static void addLayout(const std::string& id, std::unique_ptr<esl::logging::layout::Interface::Layout> layout);
-	static void addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::appender::Interface::Appender> appender);
+	static void flush(std::ostream& oStream);
+	static void flush(esl::logging::StreamReal& streamReal);
+	//static void flush();
+	static void addLayout(const std::string& id, std::unique_ptr<esl::logging::ILayout> layout);
+	static void addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::IAppender> appender);
 };
 
 } /* namespace jboot */

@@ -20,9 +20,8 @@
 #include <jboot/config/context/Context.h>
 #include <jboot/Logger.h>
 
-#include <esl/database/exception/SqlError.h>
 #include <esl/com/http/server/exception/StatusCode.h>
-#include <esl/stacktrace/Stacktrace.h>
+#include <esl/database/exception/SqlError.h>
 #include <esl/utility/String.h>
 
 #include <stdexcept>
@@ -35,8 +34,8 @@ namespace context {
 namespace {
 Logger logger("jboot::boot::context::Context");
 
-void addException(esl::object::Context& context, std::exception_ptr exceptionPtr) {
-	esl::object::Interface::Object* objectPtr = context.findObject<esl::object::Interface::Object>("exception");
+void addException(esl::object::IContext& context, std::exception_ptr exceptionPtr) {
+	esl::object::IObject* objectPtr = context.findObject<esl::object::IObject>("exception");
 	esl::object::Value<std::exception_ptr>* exceptionObjectPtr = dynamic_cast<esl::object::Value<std::exception_ptr>*>(objectPtr);
 
 	if(exceptionObjectPtr) {
@@ -48,28 +47,31 @@ void addException(esl::object::Context& context, std::exception_ptr exceptionPtr
 }
 } /* anonymous namespace */
 
-std::unique_ptr<esl::boot::context::Interface::Context> Context::create(const std::vector<std::pair<std::string, std::string>>& settings) {
-	return std::unique_ptr<esl::boot::context::Interface::Context>(new Context(settings));
+std::unique_ptr<esl::boot::context::IContext> Context::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::boot::context::IContext>(new Context(settings));
 }
 
 Context::Context(const std::vector<std::pair<std::string, std::string>>& settings) {
-	bool hasShowException = false;
-	bool hasShowStacktrace = false;
-	bool hasCatchException = false;
-	bool hasContinueOnException = false;
-
     for(const auto& setting : settings) {
-		if(setting.first == "show-exception") {
-			if(hasShowException) {
-		        throw std::runtime_error("multiple definition of attribute 'show-exception'.");
+		if(setting.first == "handle-exception") {
+			if(hasHandleException) {
+		        throw std::runtime_error("multiple definition of attribute 'handle-exception'.");
 			}
-			std::string value = esl::utility::String::toLower(setting.second);
-			hasShowException = true;
-			if(value == "true") {
-				showException = true;
+			hasHandleException = true;
+			if(setting.second == "rethrow") {
+				handleException = rethrow;
 			}
-			else if(value == "false") {
-				showException = false;
+			else if(setting.second == "stop") {
+				handleException = stop;
+			}
+			else if(setting.second == "stop-and-show") {
+				handleException = stopAndShow;
+			}
+			else if(setting.second == "ignore") {
+				handleException = ignore;
+			}
+			else if(setting.second == "ignore-and-show") {
+				handleException = ignoreAndShow;
 			}
 			else {
 		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'show-exception'");
@@ -121,62 +123,34 @@ Context::Context(const std::vector<std::pair<std::string, std::string>>& setting
 		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'show-output'");
 			}
 		}
-		else if(setting.first == "catch-exception") {
-			if(hasCatchException) {
-		        throw std::runtime_error("multiple definition of attribute 'catch-exception'.");
-			}
-			std::string value = esl::utility::String::toLower(setting.second);
-			hasCatchException = true;
-			if(value == "true") {
-				catchException = true;
-			}
-			else if(value == "false") {
-				catchException = false;
-			}
-			else {
-		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'catch-exception'");
-			}
-		}
-		else if(setting.first == "continue-on-exception") {
-			if(hasContinueOnException) {
-		        throw std::runtime_error("multiple definition of attribute 'continue-on-exception'.");
-			}
-			std::string value = esl::utility::String::toLower(setting.second);
-			hasContinueOnException = true;
-			if(value == "true") {
-				continueOnException = true;
-			}
-			else if(value == "false") {
-				continueOnException = false;
-			}
-			else {
-		    	throw std::runtime_error("Invalid value \"" + setting.second + "\" for attribute 'continue-on-exception'");
-			}
-		}
 		else {
             throw std::runtime_error("unknown attribute '\"" + setting.first + "\"'.");
 		}
     }
 
-	if(showException && !showOutput) {
-        throw std::runtime_error("Definition of 'show-exception' = true without definition of 'show-output'.");
+	if(!showOutput && handleException == stopAndShow) {
+        throw std::runtime_error("Definition of 'handle-exception' = 'stop-and-show' without definition of 'show-output'.");
 	}
-	if(showStacktrace && !showOutput) {
-        throw std::runtime_error("Definition of 'show-stacktrace' = true without definition of 'show-output'.");
+	if(!showOutput && handleException == ignoreAndShow) {
+        throw std::runtime_error("Definition of 'handle-exception' = 'ignore-and-show' without definition of 'show-output'.");
 	}
-	if((!showException || !showStacktrace) && showOutput) {
-        throw std::runtime_error("Definition of 'show-output' without definition of 'show-exception' or 'show-stacktrace'.");
+	if(showOutput && handleException != stopAndShow && handleException != ignoreAndShow) {
+		logger.warn << "Definition of 'show-output' is useless if definition of 'handle-exception' is neither 'stop-and-show' nor 'ignore-and-show'";
 	}
-    if(continueOnException && !catchException) {
-        throw std::runtime_error("Invalid use of 'continue-on-exception' = true and 'catch-exception' = false.");
-    }
+	if(hasShowStacktrace && showStacktrace && handleException != stopAndShow && handleException != ignoreAndShow) {
+		logger.warn << "Definition of 'show-stacktrace' is useless if definition of 'handle-exception' is neither 'stop-and-show' nor 'ignore-and-show'";
+	}
 }
 
 void Context::setParent(Context* parentContext) {
 	parent = parentContext;
+
+	if(!hasHandleException) {
+		handleException = parent ? rethrow : showOutput ? stopAndShow : stop;
+	}
 }
 
-esl::boot::context::Interface::Context& Context::addData(const std::string& configuration) {
+esl::boot::context::IContext& Context::addData(const std::string& configuration) {
 	config::context::Context config(configuration);
 
 	config.loadLibraries();
@@ -185,7 +159,7 @@ esl::boot::context::Interface::Context& Context::addData(const std::string& conf
 	return *this;
 }
 
-esl::boot::context::Interface::Context& Context::addFile(const boost::filesystem::path& filename) {
+esl::boot::context::IContext& Context::addFile(const boost::filesystem::path& filename) {
 	config::context::Context config(filename);
 
 	config.loadLibraries();
@@ -194,8 +168,8 @@ esl::boot::context::Interface::Context& Context::addFile(const boost::filesystem
 	return *this;
 }
 
-esl::boot::context::Interface::Context& Context::addReference(const std::string& destinationId, const std::string& sourceId) {
-	esl::object::Interface::Object* object = findRawObject(sourceId);
+esl::boot::context::IContext& Context::addReference(const std::string& destinationId, const std::string& sourceId) {
+	esl::object::IObject* object = findRawObject(sourceId);
 
 	if(object == nullptr) {
         throw std::runtime_error("Cannot add reference with id '" + destinationId + "' because source object with id '" + sourceId + "' does not exists.");
@@ -218,36 +192,42 @@ int Context::getReturnCode() const {
 	return returnCode;
 }
 
-void Context::onEvent(const esl::object::Interface::Object& object) {
+void Context::onEvent(const esl::object::IObject& object) {
 	initializeContext(*this);
 
+#if 1
 	for(auto& entry : entries) {
-		try {
+		entry->onEvent(object);
+	}
+#else
+	for(auto& entry : entries) {
+		if(handleException == rethrow) {
 			entry->onEvent(object);
 		}
-		catch(...) {
-			if(showOutput) {
-				if(showOutput->ostream) {
-					printException(*showOutput->ostream, std::current_exception());
-				}
-				else if(showOutput->streamReal) {
-					printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
-				}
-				else if(showOutput->streamEmpty) {
-					printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
-				}
+		else {
+			try {
+				entry->onEvent(object);
 			}
+			catch(...) {
+				if(showOutput && (handleException == stopAndShow || handleException == ignoreAndShow)) {
+					if(showOutput->ostream) {
+						printException(*showOutput->ostream, std::current_exception());
+					}
+					else if(showOutput->streamReal) {
+						printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
+					}
+					else if(showOutput->streamEmpty) {
+						printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
+					}
+				}
 
-			if(catchException) {
-				if(continueOnException == false) {
+				if(handleException == stop || handleException == stopAndShow) {
 					break;
 				}
 			}
-			else { // continueOnException == false
-				throw;
-			}
 		}
 	}
+#endif
 }
 
 std::set<std::string> Context::getObjectIds() const {
@@ -260,35 +240,36 @@ std::set<std::string> Context::getObjectIds() const {
 	return rv;
 }
 
-void Context::procedureRun(esl::object::Context& context) {
+void Context::procedureRun(esl::object::IContext& context) {
 	initializeContext(*this);
 
 	for(auto& entry : entries) {
-		try {
+		if(handleException == rethrow) {
 			entry->procedureRun(context);
 		}
-		catch(...) {
-			if(showOutput) {
-				if(showOutput->ostream) {
-					printException(*showOutput->ostream, std::current_exception());
-				}
-				else if(showOutput->streamReal) {
-					printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
-				}
-				else if(showOutput->streamEmpty) {
-					printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
-				}
+		else {
+			try {
+				entry->procedureRun(context);
 			}
+			catch(...) {
+				if(showOutput && (handleException == stopAndShow || handleException == ignoreAndShow)) {
+					if(showOutput->ostream) {
+						Logger::flush(*showOutput->ostream);
+						printException(*showOutput->ostream, std::current_exception());
+					}
+					else if(showOutput->streamReal) {
+						Logger::flush(*showOutput->streamReal);
+						printException(*showOutput->streamReal, std::current_exception(), esl::logging::Location{});
+					}
+					else if(showOutput->streamEmpty) {
+//						printException(*showOutput->streamEmpty, std::current_exception(), esl::logging::Location{});
+					}
+				}
 
-			if(catchException) {
-				addException(context, std::current_exception());
-
-				if(continueOnException == false) {
+				if(handleException == stop || handleException == stopAndShow) {
+					addException(context, std::current_exception());
 					break;
 				}
-			}
-			else { // continueOnException == false
-				throw;
 			}
 		}
 	}
@@ -299,7 +280,7 @@ void Context::procedureRun(esl::object::Context& context) {
 	}
 }
 
-void Context::initializeContext(esl::object::Context&) {
+void Context::initializeContext(esl::object::IContext&) {
 	for(auto& entry : entries) {
 		entry->initializeContext(*this);
 	}
@@ -311,31 +292,31 @@ void Context::initializeContext(esl::object::Context&) {
 	}
 }
 
-esl::object::Interface::Object* Context::findRawObject(const std::string& id) {
+esl::object::IObject* Context::findRawObject(const std::string& id) {
 	auto iter = objects.find(id);
-	esl::object::Interface::Object* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
+	esl::object::IObject* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
 	if(object) {
 		return object;
 	}
 	if(parent) {
-		parent->findObject<esl::object::Interface::Object>(id);
+		parent->findObject<esl::object::IObject>(id);
 	}
 	return nullptr;
 }
 
-const esl::object::Interface::Object* Context::findRawObject(const std::string& id) const {
+const esl::object::IObject* Context::findRawObject(const std::string& id) const {
 	auto iter = objects.find(id);
-	esl::object::Interface::Object* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
+	esl::object::IObject* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
 	if(object) {
 		return object;
 	}
 	if(parent) {
-		parent->findObject<esl::object::Interface::Object>(id);
+		parent->findObject<esl::object::IObject>(id);
 	}
 	return nullptr;
 }
 
-void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::Interface::Object> object) {
+void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::IObject> object) {
 	Context* context = dynamic_cast<Context*>(object.get());
 
 	if(id.empty()) {
@@ -354,99 +335,89 @@ void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::I
 }
 
 
-void Context::printException(std::ostream& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails) {
+void Context::printException(std::ostream& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::stacktrace::IStacktrace* stacktrace) {
 	std::string levelStr = "[" + std::to_string(level) + "]";
 
-	if(showException) {
-		stream << std::string(level, ' ') << "exception: " << e.what() << '\n';
-		stream << levelStr << " Exception : " << plainException << "\n";
-		stream << levelStr << " What      : " << (e.what() ? e.what() : "") << "\n";
-		if(plainDetails.empty() == false) {
-			stream << levelStr << " Details   : " << plainDetails << "\n";
-		}
+	stream << levelStr << " Exception : " << plainException << "\n";
+	stream << levelStr << " What      : " << (e.what() ? e.what() : "") << "\n";
+	if(plainDetails.empty() == false) {
+		stream << levelStr << " Details   : " << plainDetails << "\n";
 	}
 
 	if(showStacktrace) {
-		const esl::stacktrace::Stacktrace* stacktrace = esl::stacktrace::Stacktrace::get(e);
 		if(stacktrace) {
 			stream << levelStr << " Stacktrace:\n";
 			stacktrace->dump(stream);
 		}
 		else {
-			stream << "Stacktrace: not available\n";
+			stream << levelStr << " Stacktrace: not available\n";
 		}
 	}
+
+	stream << "\n";
 
 	try {
 		std::rethrow_if_nested(e);
 	}
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()));
+		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
-		s << "SQL Return Code:" << nestedException.getSqlReturnCode() << "\n";
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", s.str());
+		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, level+1, nestedException, "std::runtime_error", "");
+		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, level+1, nestedException, "std::exception", "");
+		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(...) {
-		if(showException) {
-			stream << "[" + std::to_string(level+1) + "] Exception : unknown\n";
-		}
+		stream << "[" + std::to_string(level+1) + "] Exception : unknown\n";
 	}
 }
 
-void Context::printException(esl::logging::StreamReal& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, esl::logging::Location location) {
+void Context::printException(esl::logging::StreamReal& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::stacktrace::IStacktrace* stacktrace, esl::logging::Location location) {
 	std::string levelStr = "[" + std::to_string(level) + "]";
 
-	if(showException) {
-		stream(location.object, location.function, location.file, location.line) << std::string(level, ' ') << "exception: " << e.what() << '\n';
-		stream(location.object, location.function, location.file, location.line) << levelStr << " Exception : " << plainException << "\n";
-		stream(location.object, location.function, location.file, location.line) << levelStr << " What      : " << (e.what() ? e.what() : "") << "\n";
-		if(plainDetails.empty() == false) {
-			stream(location.object, location.function, location.file, location.line) << levelStr << " Details   : " << plainDetails << "\n";
-		}
+	stream(location.object, location.function, location.file, location.line) << levelStr << " Exception : " << plainException << "\n";
+	stream(location.object, location.function, location.file, location.line) << levelStr << " What      : " << (e.what() ? e.what() : "") << "\n";
+	if(plainDetails.empty() == false) {
+		stream(location.object, location.function, location.file, location.line) << levelStr << " Details   : " << plainDetails << "\n";
 	}
 
 	if(showStacktrace) {
-		const esl::stacktrace::Stacktrace* stacktrace = esl::stacktrace::Stacktrace::get(e);
 		if(stacktrace) {
 			stream(location.object, location.function, location.file, location.line) << levelStr << " Stacktrace:\n";
 			stacktrace->dump(stream, location);
 		}
 		else {
-			stream(location.object, location.function, location.file, location.line) << "Stacktrace: not available\n";
+			stream(location.object, location.function, location.file, location.line) << levelStr << " Stacktrace: not available\n";
 		}
 	}
+
+	stream(location.object, location.function, location.file, location.line) << "\n";
 
 	try {
 		std::rethrow_if_nested(e);
 	}
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), location);
+		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
-		s << "SQL Return Code:" << nestedException.getSqlReturnCode() << "\n";
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", s.str(), location);
+		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, level+1, nestedException, "std::runtime_error", "", location);
+		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, level+1, nestedException, "std::exception", "", location);
+		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(...) {
-		if(showException) {
-			stream(location.object, location.function, location.file, location.line) << "[" + std::to_string(level+1) + "] Exception : unknown\n";
-		}
+		stream(location.object, location.function, location.file, location.line) << "[" + std::to_string(level+1) + "] Exception : unknown\n";
 	}
 }
 
@@ -455,24 +426,21 @@ void Context::printException(std::ostream& stream, std::exception_ptr exceptionP
 		std::rethrow_exception(exceptionPointer);
     }
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()));
+		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
-		s << "SQL Return Code:" << nestedException.getSqlReturnCode() << "\n";
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, 1, nestedException, "esl::database::exception::SqlError", s.str());
+		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, 1, nestedException, "std::runtime_error", "");
+		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, 1, nestedException, "std::exception", "");
+		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
 	}
 	catch(...) {
-		if(showException) {
-			stream << "[1] Exception : unknown\n";
-		}
+		stream << "[1] Exception : unknown\n";
 	}
 }
 
@@ -481,24 +449,21 @@ void Context::printException(esl::logging::StreamReal& stream, std::exception_pt
 		std::rethrow_exception(exceptionPointer);
     }
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), location);
+		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
-		s << "SQL Return Code:" << nestedException.getSqlReturnCode() << "\n";
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, 1, nestedException, "esl::database::exception::SqlError", s.str(), location);
+		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, 1, nestedException, "std::runtime_error", "", location);
+		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, 1, nestedException, "std::exception", "", location);
+		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(...) {
-		if(showException) {
-			stream(location.object, location.function, location.file, location.line) << "[1] Exception : unknown\n";
-		}
+		stream(location.object, location.function, location.file, location.line) << "[1] Exception : unknown\n";
 	}
 }
 

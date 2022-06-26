@@ -6,6 +6,9 @@ build
 .cproject
 .settings
 
+# 3rd party code
+src/main/tinyxml2
+
 # Prerequisites
 *.d
 

@@ -23,11 +23,11 @@
 #include <jboot/processing/task/Thread.h>
 
 #include <esl/processing/task/Descriptor.h>
-#include <esl/processing/task/Interface.h>
+#include <esl/processing/task/ITaskFactory.h>
 #include <esl/processing/task/Status.h>
 #include <esl/processing/task/Task.h>
-#include <esl/processing/procedure/Interface.h>
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -43,12 +43,12 @@ namespace jboot {
 namespace processing {
 namespace task {
 
-class TaskFactory final : public esl::processing::task::Interface::TaskFactory {
+class TaskFactory final : public esl::processing::task::ITaskFactory {
 public:
 	friend class Binding;
 	friend class Thread;
 
-	static std::unique_ptr<esl::processing::task::Interface::TaskFactory> create(const std::vector<std::pair<std::string, std::string>>& settings);
+	static std::unique_ptr<esl::processing::task::ITaskFactory> create(const std::vector<std::pair<std::string, std::string>>& settings);
 
 	TaskFactory(const std::vector<std::pair<std::string, std::string>>& settings);
 	~TaskFactory();
@@ -58,14 +58,18 @@ public:
 	std::vector<esl::processing::task::Task> getTasks() const override;
 
 private:
-	long maxThreads = 0;
+	mutable std::mutex queueMutex; // mutable because of "getTasks() const"
+	std::list<std::pair<Binding*, std::shared_ptr<esl::processing::task::Task::Binding>>> queue;
 
-	std::mutex queueMutex;
-	std::list<std::pair<std::shared_ptr<esl::processing::task::Task::Binding>, Binding*>> queue;
-
+	mutable std::mutex threadsMutex; // mutable because of "getTasks() const"
 	std::condition_variable threadsCV;
-	std::mutex threadsMutex;
-	std::vector<std::unique_ptr<Thread>> threads;
+	std::atomic<unsigned int> threadsMax { 0 };
+	unsigned int threadsAvailable = 0;
+	std::map<Binding*, std::shared_ptr<esl::processing::task::Task::Binding>> threadsProcessing;
+	std::condition_variable threadsFinishedCV;
+
+	bool hasThreadTimeout = false;
+	std::chrono::milliseconds threadTimeout { 1000 };
 };
 
 } /* namespace task */

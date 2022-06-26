@@ -17,12 +17,23 @@
  */
 
 #include <jboot/boot/logging/Config.h>
-
 #include <jboot/config/logging/Logger.h>
+
+#include <stdexcept>
 
 namespace jboot {
 namespace boot {
 namespace logging {
+
+std::unique_ptr<esl::boot::logging::IConfig> Config::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::boot::logging::IConfig>(new Config(settings));
+}
+
+Config::Config(const std::vector<std::pair<std::string, std::string>>& settings) {
+    for(const auto& setting : settings) {
+        throw std::runtime_error("unknown attribute '\"" + setting.first + "\"'.");
+    }
+}
 
 void Config::loadData(const std::string& configuration) {
 	jboot::config::logging::Logger loggerConfig(configuration);

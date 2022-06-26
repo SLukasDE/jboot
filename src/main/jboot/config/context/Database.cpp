@@ -19,8 +19,8 @@
 #include <jboot/config/context/Database.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/database/Interface.h>
-#include <esl/module/Interface.h>
+#include <esl/database/IConnectionFactory.h>
+#include <esl/plugin/Registry.h>
 
 #include <utility>
 
@@ -137,7 +137,7 @@ void Database::install(boot::context::Context& context) const {
 	else {
 		context.addReference(id, refId);
 
-		if(context.findObject<esl::database::Interface::ConnectionFactory>(refId) == nullptr) {
+		if(context.findObject<esl::database::IConnectionFactory>(refId) == nullptr) {
 			if(id.empty()) {
 				throw XMLException(*this, "Could not add database reference, because referenced object with id '" + refId + "' is not a database connection factory.");
 			}
@@ -149,15 +149,15 @@ void Database::install(boot::context::Context& context) const {
 	context.addObject(id, create());
 }
 
-std::unique_ptr<esl::object::Interface::Object> Database::create() const {
+std::unique_ptr<esl::object::IObject> Database::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::database::Interface::ConnectionFactory> connectionFactory;
+	std::unique_ptr<esl::database::IConnectionFactory> connectionFactory;
 	try {
-		connectionFactory = esl::getModule().getInterface<esl::database::Interface>(implementation).createConnectionFactory(eslSettings);
+		connectionFactory = esl::plugin::Registry::get().getPlugin<esl::database::IConnectionFactory::Plugin>(implementation).create(eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -170,7 +170,7 @@ std::unique_ptr<esl::object::Interface::Object> Database::create() const {
 		throw XMLException(*this, "Could not create a database connection factory with id '" + id + "' for implementation '" + implementation + "' because interface method createConnectionFactory() returns nullptr.");
 	}
 
-	return std::unique_ptr<esl::object::Interface::Object>(connectionFactory.release());
+	return std::unique_ptr<esl::object::IObject>(connectionFactory.release());
 }
 
 void Database::parseInnerElement(const tinyxml2::XMLElement& element) {

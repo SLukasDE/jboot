@@ -16,13 +16,15 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <esl/object/Context.h>
-#include <esl/processing/procedure/Interface.h>
+#include <esl/object/IContext.h>
+#include <esl/object/IEvent.h>
+#include <esl/processing/procedure/IProcedure.h>
 #include <esl/processing/task/Descriptor.h>
-#include <esl/processing/task/Interface.h>
+#include <esl/processing/task/ITaskFactory.h>
 #include <esl/processing/task/Status.h>
 #include <esl/processing/task/Task.h>
 
+#include <atomic>
 #include <chrono>
 #include <exception>
 #include <functional>
@@ -46,25 +48,26 @@ public:
 
 	Binding(TaskFactory& taskFactory, esl::processing::task::Descriptor descriptor);
 
-	void sendEvent(const esl::object::Interface::Object& object) override;
+	void sendEvent(const esl::object::IObject& object) override;
 	void cancel() override;
 
 	esl::processing::task::Status getStatus() const override;
-	esl::object::Context* getContext() const override;
+	esl::object::IContext* getContext() const override;
 	std::exception_ptr getException() const override;
 
 	void setStatus(esl::processing::task::Status status);
 
 	/* called by Thread::run() */
-	void run();
+	void run() noexcept;
 
 private:
-	std::mutex taskFactoryMutex;
+	mutable std::mutex taskFactoryMutex;
 	TaskFactory* taskFactory;
 
 	esl::processing::task::Descriptor descriptor;
+	esl::object::IEvent* event = nullptr;
 
-	esl::processing::task::Status status = esl::processing::task::Status::waiting;
+	std::atomic<esl::processing::task::Status> status { esl::processing::task::Status::waiting };
 	std::exception_ptr exceptionPtr;
 };
 

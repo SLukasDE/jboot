@@ -22,9 +22,7 @@
 
 #include <jboot/config/context/EntryImpl.h>
 
-#include <esl/Module.h>
-#include <esl/logging/appender/Appender.h>
-#include <esl/logging/layout/Layout.h>
+#include <esl/plugin/Registry.h>
 #include <esl/logging/Logger.h>
 
 #include <iostream>
@@ -220,20 +218,20 @@ void Context::loadLibraries() {
 			throw esl::addStacktrace(std::runtime_error(std::string("Library \"") + library.first + "\" loaded already."));
 		}
 		*/
-		library.second = &esl::module::Library::load(library.first);
-		library.second->install(esl::getModule());
+		library.second = &esl::plugin::Library::load(library.first);
+		library.second->install(esl::plugin::Registry::get());
 	}
 }
 
-std::unique_ptr<esl::object::Interface::Object> Context::create() const {
+std::unique_ptr<esl::object::IObject> Context::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::boot::context::Interface::Context> bootContext;
+	std::unique_ptr<esl::boot::context::IContext> bootContext;
 	try {
-		bootContext = esl::getModule().getInterface<esl::boot::context::Interface>(implementation).create(eslSettings);
+		bootContext = esl::plugin::Registry::get().getPlugin<esl::boot::context::IContext::Plugin>(implementation).create(eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -246,7 +244,7 @@ std::unique_ptr<esl::object::Interface::Object> Context::create() const {
 		throw XMLException(*this, "Could not create a boot context with id '" + id + "' for implementation '" + implementation + "'");
 	}
 
-	return std::unique_ptr<esl::object::Interface::Object>(bootContext.release());
+	return std::unique_ptr<esl::object::IObject>(bootContext.release());
 }
 
 void Context::parseInnerElement(const tinyxml2::XMLElement& element) {

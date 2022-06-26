@@ -16,18 +16,19 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef JBOOT_MODULE_H_
-#define JBOOT_MODULE_H_
+#ifndef JBOOT_PLUGIN_H_
+#define JBOOT_PLUGIN_H_
 
-#include <esl/module/Module.h>
+#include <esl/plugin/Registry.h>
 
 namespace jboot {
 
-struct Module final {
-	Module() = delete;
-	static void install(esl::module::Module& module);
+class Plugin final {
+public:
+	Plugin() = delete;
+	static void install(esl::plugin::Registry& registry, const char* data);
 };
 
 } /* namespace jboot */
 
-#endif /* JBOOT_MODULE_H_ */
+#endif /* JBOOT_PLUGIN_H_ */

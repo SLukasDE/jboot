@@ -20,56 +20,84 @@
 #include <jboot/processing/task/Thread.h>
 #include <jboot/processing/task/TaskFactory.h>
 
+#include <chrono>
 #include <memory>
 
 namespace jboot {
 namespace processing {
 namespace task {
 
-Thread::Thread(TaskFactory& aTaskFactory)
-: taskFactory(aTaskFactory),
-  thread(&Thread::run, this)
-{
-	threadMutex.lock();
+void Thread::create(TaskFactory& taskFactory) {
+	++taskFactory.threadsAvailable;
+	//std::thread thread(&Thread::run, taskFactory);
+	std::thread thread([&taskFactory]() {
+		Thread t(taskFactory);
+	});
 	thread.detach();
-	threadMutex.lock();
+}
+
+Thread::Thread(TaskFactory& aTaskFactory)
+: taskFactory(aTaskFactory)
+{
+	while(taskFactory.threadsMax.load() != 0) {
+		while([this]() {
+			if(taskFactory.threadsMax.load() == 0) {
+				return false;
+			}
+
+			std::lock_guard<std::mutex> lockQueueMutex(taskFactory.queueMutex);
+			return !taskFactory.queue.empty();
+		}()) {
+			Binding* bindingPtr;
+			std::shared_ptr<esl::processing::task::Task::Binding> binding;
+
+			{
+				std::lock_guard<std::mutex> lockQueueMutex(taskFactory.queueMutex);
+				if(taskFactory.queue.empty()) {
+					break;
+				}
+				bindingPtr = taskFactory.queue.front().first;
+				binding = taskFactory.queue.front().second;
+				taskFactory.queue.pop_front();
+			}
+
+			/* Insert binding to threadsProcessing */
+			{
+				std::unique_lock<std::mutex> lockThreadsMutex(taskFactory.threadsMutex);
+				taskFactory.threadsProcessing.insert(std::make_pair(bindingPtr, std::move(binding)));
+			}
+
+			/* Run procedure by calling "run"-wrapper, to manage status, exceptions, ... */
+			bindingPtr->run();
+
+			/* Remove binding from threadsProcessing */
+			{
+				std::unique_lock<std::mutex> lockThreadsMutex(taskFactory.threadsMutex);
+				taskFactory.threadsProcessing.erase(bindingPtr);
+			}
+		}
+
+		std::unique_lock<std::mutex> lockThreadsMutex(taskFactory.threadsMutex);
+		if(taskFactory.threadsCV.wait_for(lockThreadsMutex, taskFactory.threadTimeout, [this]() {
+			return taskFactory.threadsMax.load() == 0 ||  !taskFactory.queue.empty();
+		}) == false) {
+			break;
+		}
+	}
 }
 
 Thread::~Thread() {
-	threadMutex.lock();
-}
-
-void Thread::run() {
-	/* resume Thread::Thread */
-	threadMutex.unlock();
-
-	std::unique_lock<std::mutex> lockThreadsMutex(taskFactory.threadsMutex);
-	while(true) {
-		taskFactory.threadsCV.wait(lockThreadsMutex);
-		Binding* bindingPtr;
-		std::shared_ptr<esl::processing::task::Task::Binding> binding;
-
-		{
-			std::lock_guard<std::mutex> lockQueueMutex(taskFactory.queueMutex);
-			if(taskFactory.queue.empty()) {
-				break;
-			}
-			binding = taskFactory.queue.front().first;
-			bindingPtr = taskFactory.queue.front().second;
-			taskFactory.queue.pop_front();
-		}
-
-		try {
-			bindingPtr->run();
-		}
-		catch(...) {
-
-		}
-//		lockThreadsMutex.unlock();
+	{
+		std::unique_lock<std::mutex> lockThreadsMutex(taskFactory.threadsMutex);
+		--taskFactory.threadsAvailable;
 	}
 
-	/* resume Thread::~Thread */
-	threadMutex.unlock();
+	taskFactory.threadsFinishedCV.notify_one();
+
+}
+
+void Thread::run(TaskFactory& taskFactory) {
+	Thread thread(taskFactory);
 }
 
 } /* namespace task */

@@ -18,8 +18,7 @@
 
 #include <jboot/Logger.h>
 
-#include <esl/logging/layout/Interface.h>
-#include <esl/logging/appender/Interface.h>
+#include <esl/logging/Config.h>
 
 #include <iostream>
 #include <map>
@@ -31,10 +30,38 @@
 namespace jboot {
 
 namespace {
-std::map<std::string, std::unique_ptr<esl::logging::layout::Interface::Layout>> layouts;
-std::vector<std::pair<std::string, std::unique_ptr<esl::logging::appender::Interface::Appender>>> appenders;
+std::map<std::string, std::unique_ptr<esl::logging::ILayout>> layouts;
+std::vector<std::pair<std::string, std::unique_ptr<esl::logging::IAppender>>> appenders;
 }
 
+void Logger::flush(std::ostream& oStream) {
+	for(auto& appender : appenders) {
+		std::stringstream strStream;
+
+		appender.second->flush();
+
+		appender.second->flush(strStream);
+		if(!strStream.str().empty()) {
+			oStream << "\n\nFlush log messages from appender \"" << appender.first << "\":\n";
+			oStream << strStream.str();
+		}
+	}
+}
+
+void Logger::flush(esl::logging::StreamReal& streamReal) {
+	for(auto& appender : appenders) {
+		std::stringstream strStream;
+
+		appender.second->flush();
+
+		appender.second->flush(strStream);
+		if(!strStream.str().empty()) {
+			streamReal << "\n\nFlush log messages from appender \"" << appender.first << "\":\n";
+			streamReal << strStream.str();
+		}
+	}
+}
+/*
 void Logger::flush() {
 	for(auto& appender : appenders) {
 		std::stringstream strStream;
@@ -48,14 +75,14 @@ void Logger::flush() {
 		}
 	}
 }
-
-void Logger::addLayout(const std::string& id, std::unique_ptr<esl::logging::layout::Interface::Layout> layout) {
+*/
+void Logger::addLayout(const std::string& id, std::unique_ptr<esl::logging::ILayout> layout) {
 	if(layouts.insert(std::make_pair(id, std::move(layout))).second == false) {
 		throw std::runtime_error("Cannot add layout with id \"" + id + "\" because it exists already");
 	}
 }
 
-void Logger::addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::appender::Interface::Appender> appender) {
+void Logger::addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::IAppender> appender) {
 	auto iter = layouts.find(layoutRefId);
 	if(iter == std::end(layouts)) {
 		throw std::runtime_error("Appender is referencing an undefined layout \"" + layoutRefId + "\"");
@@ -63,7 +90,7 @@ void Logger::addAppender(const std::string& name, const std::string& layoutRefId
 
 	appender->setLayout(iter->second.get());
 
-    esl::logging::addAppender(*appender);
+    esl::logging::Config::addAppender(*appender);
     appenders.push_back(std::make_pair(name, std::move(appender)));
 }
 
