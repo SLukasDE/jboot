@@ -134,15 +134,15 @@ void Object::install(boot::context::Context& context) const {
 	}
 }
 
-std::unique_ptr<esl::object::IObject> Object::create() const {
+std::unique_ptr<esl::object::Object> Object::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::object::IObject> eslObject;
+	std::unique_ptr<esl::object::Object> eslObject;
 	try {
-		eslObject = esl::plugin::Registry::get().getPlugin<esl::object::IObject::Plugin>(implementation).create(eslSettings);
+		eslObject = esl::plugin::Registry::get().create<esl::object::Object>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());

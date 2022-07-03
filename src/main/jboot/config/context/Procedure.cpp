@@ -19,7 +19,7 @@
 #include <jboot/config/context/Procedure.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/processing/procedure/IProcedure.h>
+#include <esl/processing/Procedure.h>
 #include <esl/plugin/Registry.h>
 
 namespace jboot {
@@ -131,7 +131,7 @@ void Procedure::install(boot::context::Context& context) const {
 	else {
 		context.addReference(id, refId);
 
-		if(context.findObject<esl::processing::procedure::IProcedure>(refId) == nullptr) {
+		if(context.findObject<esl::processing::Procedure>(refId) == nullptr) {
 			if(id.empty()) {
 				throw XMLException(*this, "Could not add procedure reference, because referenced object with id '" + refId + "' is not a procedure.");
 			}
@@ -142,15 +142,15 @@ void Procedure::install(boot::context::Context& context) const {
 	}
 }
 
-std::unique_ptr<esl::object::IObject> Procedure::create() const {
+std::unique_ptr<esl::object::Object> Procedure::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::processing::procedure::IProcedure> procedure;
+	std::unique_ptr<esl::processing::Procedure> procedure;
 	try {
-		procedure = esl::plugin::Registry::get().getPlugin<esl::processing::procedure::IProcedure::Plugin>(implementation).create(eslSettings);
+		procedure = esl::plugin::Registry::get().create<esl::processing::Procedure>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -163,7 +163,7 @@ std::unique_ptr<esl::object::IObject> Procedure::create() const {
 		throw XMLException(*this, "Could not create procedure with id '" + id + "' for implementation '" + implementation + "' because interface method createProcedure() returns nullptr.");
 	}
 
-	return std::unique_ptr<esl::object::IObject>(procedure.release());
+	return std::unique_ptr<esl::object::Object>(procedure.release());
 }
 
 void Procedure::parseInnerElement(const tinyxml2::XMLElement& element) {

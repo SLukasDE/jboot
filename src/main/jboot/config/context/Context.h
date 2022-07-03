@@ -24,8 +24,9 @@
 #include <jboot/config/logging/Logger.h>
 #include <jboot/boot/context/Context.h>
 
-#include <esl/logging/IAppender.h>
-#include <esl/logging/ILayout.h>
+#include <esl/object/Object.h>
+#include <esl/logging/Appender.h>
+#include <esl/logging/Layout.h>
 #include <esl/plugin/Library.h>
 
 #include <tinyxml2/tinyxml2.h>
@@ -69,7 +70,7 @@ private:
 	std::set<std::string> filesLoaded;
 	std::vector<logging::Logger> eslLoggers;
 
-	std::unique_ptr<esl::object::IObject> create() const;
+	std::unique_ptr<esl::object::Object> create() const;
 	void parseInnerElement(const tinyxml2::XMLElement& element);
 
 	void loadXML(const tinyxml2::XMLElement& element);

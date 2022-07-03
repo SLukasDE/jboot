@@ -223,15 +223,15 @@ void Context::loadLibraries() {
 	}
 }
 
-std::unique_ptr<esl::object::IObject> Context::create() const {
+std::unique_ptr<esl::object::Object> Context::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::boot::context::IContext> bootContext;
+	std::unique_ptr<esl::boot::context::Context> bootContext;
 	try {
-		bootContext = esl::plugin::Registry::get().getPlugin<esl::boot::context::IContext::Plugin>(implementation).create(eslSettings);
+		bootContext = esl::plugin::Registry::get().create<esl::boot::context::Context>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -244,7 +244,7 @@ std::unique_ptr<esl::object::IObject> Context::create() const {
 		throw XMLException(*this, "Could not create a boot context with id '" + id + "' for implementation '" + implementation + "'");
 	}
 
-	return std::unique_ptr<esl::object::IObject>(bootContext.release());
+	return std::unique_ptr<esl::object::Object>(bootContext.release());
 }
 
 void Context::parseInnerElement(const tinyxml2::XMLElement& element) {

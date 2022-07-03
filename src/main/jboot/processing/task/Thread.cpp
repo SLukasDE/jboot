@@ -49,7 +49,7 @@ Thread::Thread(TaskFactory& aTaskFactory)
 			return !taskFactory.queue.empty();
 		}()) {
 			Binding* bindingPtr;
-			std::shared_ptr<esl::processing::task::Task::Binding> binding;
+			std::shared_ptr<esl::processing::Task::Binding> binding;
 
 			{
 				std::lock_guard<std::mutex> lockQueueMutex(taskFactory.queueMutex);

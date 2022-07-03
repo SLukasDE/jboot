@@ -19,7 +19,7 @@
 #include <jboot/config/context/BasicClient.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/com/basic/client/IConnectionFactory.h>
+#include <esl/com/basic/client/ConnectionFactory.h>
 #include <esl/plugin/Registry.h>
 
 #include <utility>
@@ -137,7 +137,7 @@ void BasicClient::install(boot::context::Context& context) const {
 	else {
 		context.addReference(id, refId);
 
-		if(context.findObject<esl::com::basic::client::IConnectionFactory>(refId) == nullptr) {
+		if(context.findObject<esl::com::basic::client::ConnectionFactory>(refId) == nullptr) {
 			if(id.empty()) {
 				throw XMLException(*this, "Could not add basic client reference, because referenced object with id '" + refId + "' is not a basic client connection factory.");
 			}
@@ -149,15 +149,15 @@ void BasicClient::install(boot::context::Context& context) const {
 	context.addObject(id, create());
 }
 
-std::unique_ptr<esl::object::IObject> BasicClient::create() const {
+std::unique_ptr<esl::object::Object> BasicClient::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::com::basic::client::IConnectionFactory> connectionFactory;
+	std::unique_ptr<esl::com::basic::client::ConnectionFactory> connectionFactory;
 	try {
-		connectionFactory = esl::plugin::Registry::get().getPlugin<esl::com::basic::client::IConnectionFactory::Plugin>(implementation).create(eslSettings);
+		connectionFactory = esl::plugin::Registry::get().create<esl::com::basic::client::ConnectionFactory>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -170,7 +170,7 @@ std::unique_ptr<esl::object::IObject> BasicClient::create() const {
 		throw XMLException(*this, "Could not create a basic client connection factory with id '" + id + "' for implementation '" + implementation + "' because interface method createConnectionFactory() returns nullptr.");
 	}
 
-	return std::unique_ptr<esl::object::IObject>(connectionFactory.release());
+	return std::unique_ptr<esl::object::Object>(connectionFactory.release());
 }
 
 void BasicClient::parseInnerElement(const tinyxml2::XMLElement& element) {

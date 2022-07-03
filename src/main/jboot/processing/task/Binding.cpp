@@ -24,13 +24,13 @@ namespace jboot {
 namespace processing {
 namespace task {
 
-Binding::Binding(TaskFactory& aTaskFactory, esl::processing::task::Descriptor aDescriptor)
+Binding::Binding(TaskFactory& aTaskFactory, esl::processing::TaskDescriptor aDescriptor)
 : taskFactory(&aTaskFactory),
   descriptor(std::move(aDescriptor)),
-  event(dynamic_cast<esl::object::IEvent*>(descriptor.procedure.get()))
+  event(dynamic_cast<esl::object::Event*>(descriptor.procedure.get()))
 { }
 
-void Binding::sendEvent(const esl::object::IObject& object) {
+void Binding::sendEvent(const esl::object::Object& object) {
 	if(event) {
 		event->onEvent(object);
 	}
@@ -48,7 +48,7 @@ void Binding::cancel() {
 		for(auto iter = taskFactory->queue.begin(); iter != taskFactory->queue.end(); ++iter) {
 			if(iter->first == this) {
 				taskFactory->queue.erase(iter);
-				setStatus(esl::processing::task::Status::canceled);
+				setStatus(esl::processing::Status::canceled);
 				return;
 			}
 		}
@@ -62,15 +62,15 @@ void Binding::cancel() {
 	}
 }
 
-esl::processing::task::Status Binding::getStatus() const {
+esl::processing::Status Binding::getStatus() const {
 	return status.load();
 }
 
-esl::object::IContext* Binding::getContext() const {
+esl::object::Context* Binding::getContext() const {
 	switch(getStatus()) {
-	case esl::processing::task::Status::canceled:
-	case esl::processing::task::Status::exception:
-	case esl::processing::task::Status::done:
+	case esl::processing::Status::canceled:
+	case esl::processing::Status::exception:
+	case esl::processing::Status::done:
 		return descriptor.context.get();
 	default:
 		break;
@@ -83,12 +83,12 @@ std::exception_ptr Binding::getException() const {
 
 }
 
-void Binding::setStatus(esl::processing::task::Status aStatus) {
+void Binding::setStatus(esl::processing::Status aStatus) {
 	if(status.exchange(aStatus) == aStatus) {
 		return;
 	}
 
-	if(aStatus == esl::processing::task::Status::canceled) {
+	if(aStatus == esl::processing::Status::canceled) {
 		std::lock_guard<std::mutex> lockTaskFactory(taskFactoryMutex);
 		taskFactory = nullptr;
 	}
@@ -100,19 +100,19 @@ void Binding::setStatus(esl::processing::task::Status aStatus) {
 
 void Binding::run() noexcept {
 	try {
-		setStatus(esl::processing::task::Status::running);
+		setStatus(esl::processing::Status::running);
 		if(!descriptor.context) {
 			descriptor.context.reset(new object::Context);
 		}
 		if(descriptor.procedure) {
 			descriptor.procedure->procedureRun(*descriptor.context);
 		}
-		setStatus(esl::processing::task::Status::done);
+		setStatus(esl::processing::Status::done);
 	}
 	catch(...) {
 		exceptionPtr = std::current_exception();
 		try {
-			setStatus(esl::processing::task::Status::exception);
+			setStatus(esl::processing::Status::exception);
 		} catch(...) { }
 	}
 

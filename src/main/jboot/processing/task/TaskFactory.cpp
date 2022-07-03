@@ -22,8 +22,8 @@ namespace jboot {
 namespace processing {
 namespace task {
 
-std::unique_ptr<esl::processing::task::ITaskFactory> TaskFactory::create(const std::vector<std::pair<std::string, std::string>>& settings) {
-	return std::unique_ptr<esl::processing::task::ITaskFactory>(new TaskFactory(settings));
+std::unique_ptr<esl::processing::TaskFactory> TaskFactory::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::processing::TaskFactory>(new TaskFactory(settings));
 }
 
 TaskFactory::TaskFactory(const std::vector<std::pair<std::string, std::string>>& settings) {
@@ -75,7 +75,7 @@ TaskFactory::~TaskFactory() {
 
 		threadsMax.store(0);
 		for(auto& entry : queue) {
-			entry.first->setStatus(esl::processing::task::Status::canceled);
+			entry.first->setStatus(esl::processing::Status::canceled);
 		}
 		queue.clear();
 	}
@@ -88,15 +88,15 @@ TaskFactory::~TaskFactory() {
 	});
 }
 
-esl::processing::task::Task TaskFactory::createTask(esl::processing::task::Descriptor descriptor) {
-	std::shared_ptr<esl::processing::task::Task::Binding> binding;
+esl::processing::Task TaskFactory::createTask(esl::processing::TaskDescriptor descriptor) {
+	std::shared_ptr<esl::processing::Task::Binding> binding;
 
 	{
 		std::lock_guard<std::mutex> lockQueueMutex(queueMutex);
 
 		std::unique_ptr<Binding> bindingTmp(new Binding(*this, std::move(descriptor)));
 		Binding* bindingPtr = bindingTmp.get();
-		binding = std::shared_ptr<esl::processing::task::Task::Binding>(bindingTmp.release());
+		binding = std::shared_ptr<esl::processing::Task::Binding>(bindingTmp.release());
 		queue.push_back(std::make_pair(bindingPtr, binding));
 	}
 
@@ -110,20 +110,20 @@ esl::processing::task::Task TaskFactory::createTask(esl::processing::task::Descr
 
 	threadsCV.notify_one();
 
-	return esl::processing::task::Task(binding);
+	return esl::processing::Task(binding);
 }
 
-std::vector<esl::processing::task::Task> TaskFactory::getTasks() const {
-	std::vector<esl::processing::task::Task> tasks;
+std::vector<esl::processing::Task> TaskFactory::getTasks() const {
+	std::vector<esl::processing::Task> tasks;
 
 	std::lock_guard<std::mutex> lockQueueMutex(queueMutex);
 	for(auto& entry : queue) {
-		tasks.push_back(esl::processing::task::Task(entry.second));
+		tasks.push_back(esl::processing::Task(entry.second));
 	}
 
 	std::lock_guard<std::mutex> lockThreadMutex(threadsMutex);
 	for(auto& entry : threadsProcessing) {
-		tasks.push_back(esl::processing::task::Task(entry.second));
+		tasks.push_back(esl::processing::Task(entry.second));
 	}
 
 	return tasks;

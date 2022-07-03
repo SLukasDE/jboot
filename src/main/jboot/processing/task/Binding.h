@@ -16,13 +16,13 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <esl/object/IContext.h>
-#include <esl/object/IEvent.h>
-#include <esl/processing/procedure/IProcedure.h>
-#include <esl/processing/task/Descriptor.h>
-#include <esl/processing/task/ITaskFactory.h>
-#include <esl/processing/task/Status.h>
-#include <esl/processing/task/Task.h>
+#include <esl/object/Context.h>
+#include <esl/object/Event.h>
+#include <esl/processing/Procedure.h>
+#include <esl/processing/TaskDescriptor.h>
+#include <esl/processing/TaskFactory.h>
+#include <esl/processing/Status.h>
+#include <esl/processing/Task.h>
 
 #include <atomic>
 #include <chrono>
@@ -41,21 +41,21 @@ namespace task {
 class TaskFactory;
 class Thread;
 
-class Binding final : public esl::processing::task::Task::Binding {
+class Binding final : public esl::processing::Task::Binding {
 public:
 	friend class Thread;
 	friend class Task;
 
-	Binding(TaskFactory& taskFactory, esl::processing::task::Descriptor descriptor);
+	Binding(TaskFactory& taskFactory, esl::processing::TaskDescriptor descriptor);
 
-	void sendEvent(const esl::object::IObject& object) override;
+	void sendEvent(const esl::object::Object& object) override;
 	void cancel() override;
 
-	esl::processing::task::Status getStatus() const override;
-	esl::object::IContext* getContext() const override;
+	esl::processing::Status getStatus() const override;
+	esl::object::Context* getContext() const override;
 	std::exception_ptr getException() const override;
 
-	void setStatus(esl::processing::task::Status status);
+	void setStatus(esl::processing::Status status);
 
 	/* called by Thread::run() */
 	void run() noexcept;
@@ -64,10 +64,10 @@ private:
 	mutable std::mutex taskFactoryMutex;
 	TaskFactory* taskFactory;
 
-	esl::processing::task::Descriptor descriptor;
-	esl::object::IEvent* event = nullptr;
+	esl::processing::TaskDescriptor descriptor;
+	esl::object::Event* event = nullptr;
 
-	std::atomic<esl::processing::task::Status> status { esl::processing::task::Status::waiting };
+	std::atomic<esl::processing::Status> status { esl::processing::Status::waiting };
 	std::exception_ptr exceptionPtr;
 };
 

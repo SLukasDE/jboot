@@ -19,7 +19,7 @@
 #ifndef JBOOT_BOOT_LOGGING_CONFIG_H_
 #define JBOOT_BOOT_LOGGING_CONFIG_H_
 
-#include <esl/boot/logging/IConfig.h>
+#include <esl/boot/logging/Config.h>
 
 #include <boost/filesystem/path.hpp>
 
@@ -32,14 +32,14 @@ namespace jboot {
 namespace boot {
 namespace logging {
 
-class Config : public esl::boot::logging::IConfig {
+class Config : public esl::boot::logging::Config {
 public:
-	static std::unique_ptr<esl::boot::logging::IConfig> create(const std::vector<std::pair<std::string, std::string>>& settings);
+	static std::unique_ptr<esl::boot::logging::Config> create(const std::vector<std::pair<std::string, std::string>>& settings);
 
 	Config(const std::vector<std::pair<std::string, std::string>>& settings);
 
-	void loadData(const std::string& configuration) override;
-	void loadFile(const boost::filesystem::path& filename) override;
+	void addData(const std::string& configuration) override;
+	void addFile(const boost::filesystem::path& filename) override;
 };
 
 } /* namespace logging */

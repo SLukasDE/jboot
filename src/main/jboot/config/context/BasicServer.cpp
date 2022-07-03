@@ -19,7 +19,7 @@
 #include <jboot/config/context/BasicServer.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/com/basic/server/ISocket.h>
+#include <esl/com/basic/server/Socket.h>
 #include <esl/plugin/Registry.h>
 
 #include <utility>
@@ -137,7 +137,7 @@ void BasicServer::install(boot::context::Context& context) const {
 	else {
 		context.addReference(id, refId);
 
-		if(context.findObject<esl::com::basic::server::ISocket>(refId) == nullptr) {
+		if(context.findObject<esl::com::basic::server::Socket>(refId) == nullptr) {
 			if(id.empty()) {
 				throw XMLException(*this, "Could not add basic server reference, because referenced object with id '" + refId + "' is not a basic server socket.");
 			}
@@ -149,15 +149,15 @@ void BasicServer::install(boot::context::Context& context) const {
 	context.addObject(id, create());
 }
 
-std::unique_ptr<esl::object::IObject> BasicServer::create() const {
+std::unique_ptr<esl::object::Object> BasicServer::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::com::basic::server::ISocket> socket;
+	std::unique_ptr<esl::com::basic::server::Socket> socket;
 	try {
-		socket = esl::plugin::Registry::get().getPlugin<esl::com::basic::server::ISocket::Plugin>(implementation).create(eslSettings);
+		socket = esl::plugin::Registry::get().create<esl::com::basic::server::Socket>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -170,7 +170,7 @@ std::unique_ptr<esl::object::IObject> BasicServer::create() const {
 		throw XMLException(*this, "Could not create a basic server socket with id '" + id + "' for implementation '" + implementation + "' because interface method createSocket() returns nullptr.");
 	}
 
-	return std::unique_ptr<esl::object::IObject>(socket.release());
+	return std::unique_ptr<esl::object::Object>(socket.release());
 }
 
 void BasicServer::parseInnerElement(const tinyxml2::XMLElement& element) {

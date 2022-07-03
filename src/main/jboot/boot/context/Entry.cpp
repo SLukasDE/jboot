@@ -23,24 +23,24 @@ namespace jboot {
 namespace boot {
 namespace context {
 
-Entry::Entry(std::unique_ptr<esl::object::IObject> aObject)
+Entry::Entry(std::unique_ptr<esl::object::Object> aObject)
 : object(std::move(aObject)),
   refObject(*object),
-  initializeContextPtr(dynamic_cast<esl::object::IInitializeContext*>(object.get())),
+  initializeContextPtr(dynamic_cast<esl::object::InitializeContext*>(object.get())),
   //context(dynamic_cast<IContext*>(object.get())),
-  event(dynamic_cast<esl::object::IEvent*>(object.get())),
-  procedure(dynamic_cast<esl::processing::procedure::IProcedure*>(&refObject))
+  event(dynamic_cast<esl::object::Event*>(object.get())),
+  procedure(dynamic_cast<esl::processing::Procedure*>(&refObject))
 { }
 
-Entry::Entry(esl::object::IObject& refObject)
+Entry::Entry(esl::object::Object& refObject)
 : refObject(refObject),
   initializeContextPtr(nullptr),
-  event(dynamic_cast<esl::object::IEvent*>(&refObject)),
-  procedure(dynamic_cast<esl::processing::procedure::IProcedure*>(&refObject))
+  event(dynamic_cast<esl::object::Event*>(&refObject)),
+  procedure(dynamic_cast<esl::processing::Procedure*>(&refObject))
 { }
 
 
-void Entry::initializeContext(esl::object::IContext& context) {
+void Entry::initializeContext(esl::object::Context& context) {
 	if(initializeContextPtr) {
 		initializeContextPtr->initializeContext(context);
 		initializeContextPtr = nullptr;
@@ -53,13 +53,13 @@ void Entry::initializeContext(esl::object::IContext& context) {
 	*/
 }
 
-void Entry::onEvent(const esl::object::IObject& object) {
+void Entry::onEvent(const esl::object::Object& object) {
 	if(event) {
 		event->onEvent(object);
 	}
 }
 
-void Entry::procedureRun(esl::object::IContext& context) {
+void Entry::procedureRun(esl::object::Context& context) {
 	if(procedure) {
 		procedure->procedureRun(context);
 	}

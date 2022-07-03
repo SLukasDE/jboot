@@ -19,8 +19,8 @@
 #ifndef JBOOT_LOGGER_H_
 #define JBOOT_LOGGER_H_
 
-#include <esl/logging/IAppender.h>
-#include <esl/logging/ILayout.h>
+#include <esl/logging/Appender.h>
+#include <esl/logging/Layout.h>
 #include <esl/logging/Level.h>
 #include <esl/logging/Logger.h>
 #include <esl/logging/StreamReal.h>
@@ -45,8 +45,8 @@ public:
 	static void flush(std::ostream& oStream);
 	static void flush(esl::logging::StreamReal& streamReal);
 	//static void flush();
-	static void addLayout(const std::string& id, std::unique_ptr<esl::logging::ILayout> layout);
-	static void addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::IAppender> appender);
+	static void addLayout(const std::string& id, std::unique_ptr<esl::logging::Layout> layout);
+	static void addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::Appender> appender);
 };
 
 } /* namespace jboot */

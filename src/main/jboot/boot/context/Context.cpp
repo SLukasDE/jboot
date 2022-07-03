@@ -34,8 +34,8 @@ namespace context {
 namespace {
 Logger logger("jboot::boot::context::Context");
 
-void addException(esl::object::IContext& context, std::exception_ptr exceptionPtr) {
-	esl::object::IObject* objectPtr = context.findObject<esl::object::IObject>("exception");
+void addException(esl::object::Context& context, std::exception_ptr exceptionPtr) {
+	esl::object::Object* objectPtr = context.findObject<esl::object::Object>("exception");
 	esl::object::Value<std::exception_ptr>* exceptionObjectPtr = dynamic_cast<esl::object::Value<std::exception_ptr>*>(objectPtr);
 
 	if(exceptionObjectPtr) {
@@ -47,8 +47,8 @@ void addException(esl::object::IContext& context, std::exception_ptr exceptionPt
 }
 } /* anonymous namespace */
 
-std::unique_ptr<esl::boot::context::IContext> Context::create(const std::vector<std::pair<std::string, std::string>>& settings) {
-	return std::unique_ptr<esl::boot::context::IContext>(new Context(settings));
+std::unique_ptr<esl::boot::context::Context> Context::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::boot::context::Context>(new Context(settings));
 }
 
 Context::Context(const std::vector<std::pair<std::string, std::string>>& settings) {
@@ -150,7 +150,7 @@ void Context::setParent(Context* parentContext) {
 	}
 }
 
-esl::boot::context::IContext& Context::addData(const std::string& configuration) {
+esl::boot::context::Context& Context::addData(const std::string& configuration) {
 	config::context::Context config(configuration);
 
 	config.loadLibraries();
@@ -159,7 +159,7 @@ esl::boot::context::IContext& Context::addData(const std::string& configuration)
 	return *this;
 }
 
-esl::boot::context::IContext& Context::addFile(const boost::filesystem::path& filename) {
+esl::boot::context::Context& Context::addFile(const boost::filesystem::path& filename) {
 	config::context::Context config(filename);
 
 	config.loadLibraries();
@@ -168,8 +168,8 @@ esl::boot::context::IContext& Context::addFile(const boost::filesystem::path& fi
 	return *this;
 }
 
-esl::boot::context::IContext& Context::addReference(const std::string& destinationId, const std::string& sourceId) {
-	esl::object::IObject* object = findRawObject(sourceId);
+esl::boot::context::Context& Context::addReference(const std::string& destinationId, const std::string& sourceId) {
+	esl::object::Object* object = findRawObject(sourceId);
 
 	if(object == nullptr) {
         throw std::runtime_error("Cannot add reference with id '" + destinationId + "' because source object with id '" + sourceId + "' does not exists.");
@@ -192,7 +192,7 @@ int Context::getReturnCode() const {
 	return returnCode;
 }
 
-void Context::onEvent(const esl::object::IObject& object) {
+void Context::onEvent(const esl::object::Object& object) {
 	initializeContext(*this);
 
 #if 1
@@ -240,7 +240,7 @@ std::set<std::string> Context::getObjectIds() const {
 	return rv;
 }
 
-void Context::procedureRun(esl::object::IContext& context) {
+void Context::procedureRun(esl::object::Context& context) {
 	initializeContext(*this);
 
 	for(auto& entry : entries) {
@@ -280,7 +280,7 @@ void Context::procedureRun(esl::object::IContext& context) {
 	}
 }
 
-void Context::initializeContext(esl::object::IContext&) {
+void Context::initializeContext(esl::object::Context&) {
 	for(auto& entry : entries) {
 		entry->initializeContext(*this);
 	}
@@ -292,31 +292,31 @@ void Context::initializeContext(esl::object::IContext&) {
 	}
 }
 
-esl::object::IObject* Context::findRawObject(const std::string& id) {
+esl::object::Object* Context::findRawObject(const std::string& id) {
 	auto iter = objects.find(id);
-	esl::object::IObject* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
+	esl::object::Object* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
 	if(object) {
 		return object;
 	}
 	if(parent) {
-		parent->findObject<esl::object::IObject>(id);
+		parent->findObject<esl::object::Object>(id);
 	}
 	return nullptr;
 }
 
-const esl::object::IObject* Context::findRawObject(const std::string& id) const {
+const esl::object::Object* Context::findRawObject(const std::string& id) const {
 	auto iter = objects.find(id);
-	esl::object::IObject* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
+	esl::object::Object* object = iter == std::end(objects) ? nullptr : &iter->second.refObject;
 	if(object) {
 		return object;
 	}
 	if(parent) {
-		parent->findObject<esl::object::IObject>(id);
+		parent->findObject<esl::object::Object>(id);
 	}
 	return nullptr;
 }
 
-void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::IObject> object) {
+void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::Object> object) {
 	Context* context = dynamic_cast<Context*>(object.get());
 
 	if(id.empty()) {
@@ -335,7 +335,7 @@ void Context::addRawObject(const std::string& id, std::unique_ptr<esl::object::I
 }
 
 
-void Context::printException(std::ostream& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::stacktrace::IStacktrace* stacktrace) {
+void Context::printException(std::ostream& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::Stacktrace* stacktrace) {
 	std::string levelStr = "[" + std::to_string(level) + "]";
 
 	stream << levelStr << " Exception : " << plainException << "\n";
@@ -360,25 +360,25 @@ void Context::printException(std::ostream& stream, int level, const std::excepti
 		std::rethrow_if_nested(e);
 	}
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(...) {
 		stream << "[" + std::to_string(level+1) + "] Exception : unknown\n";
 	}
 }
 
-void Context::printException(esl::logging::StreamReal& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::stacktrace::IStacktrace* stacktrace, esl::logging::Location location) {
+void Context::printException(esl::logging::StreamReal& stream, int level, const std::exception& e, const std::string& plainException, const std::string& plainDetails, const esl::system::Stacktrace* stacktrace, esl::logging::Location location) {
 	std::string levelStr = "[" + std::to_string(level) + "]";
 
 	stream(location.object, location.function, location.file, location.line) << levelStr << " Exception : " << plainException << "\n";
@@ -403,18 +403,18 @@ void Context::printException(esl::logging::StreamReal& stream, int level, const 
 		std::rethrow_if_nested(e);
 	}
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, level+1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, level+1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, level+1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, level+1, nestedException, "std::exception", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(...) {
 		stream(location.object, location.function, location.file, location.line) << "[" + std::to_string(level+1) + "] Exception : unknown\n";
@@ -426,18 +426,18 @@ void Context::printException(std::ostream& stream, std::exception_ptr exceptionP
 		std::rethrow_exception(exceptionPointer);
     }
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr);
+		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr);
 	}
 	catch(...) {
 		stream << "[1] Exception : unknown\n";
@@ -449,18 +449,18 @@ void Context::printException(esl::logging::StreamReal& stream, std::exception_pt
 		std::rethrow_exception(exceptionPointer);
     }
 	catch(const esl::com::http::server::exception::StatusCode& nestedException) {
-		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, 1, nestedException, "esl::com::http::server::exception::StatusCode", "status code " + std::to_string(nestedException.getStatusCode()), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const esl::database::exception::SqlError& nestedException) {
 		std::stringstream s;
 		nestedException.getDiagnostics().dump(s);
-		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, 1, nestedException, "esl::database::exception::SqlError", "error code " + std::to_string(nestedException.getSqlReturnCode()) + "\n" + s.str(), showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::runtime_error& nestedException) {
-		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, 1, nestedException, "std::runtime_error", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(const std::exception& nestedException) {
-		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::stacktrace::IStacktrace::get(nestedException) : nullptr, location);
+		printException(stream, 1, nestedException, "std::exception", "", showStacktrace ? esl::system::Stacktrace::get(nestedException) : nullptr, location);
 	}
 	catch(...) {
 		stream(location.object, location.function, location.file, location.line) << "[1] Exception : unknown\n";

@@ -19,7 +19,7 @@
 #include <jboot/config/context/HttpServer.h>
 #include <jboot/config/XMLException.h>
 
-#include <esl/com/http/server/ISocket.h>
+#include <esl/com/http/server/Socket.h>
 #include <esl/plugin/Registry.h>
 
 #include <utility>
@@ -137,7 +137,7 @@ void HttpServer::install(boot::context::Context& context) const {
 	else {
 		context.addReference(id, refId);
 
-		if(context.findObject<esl::com::http::server::ISocket>(refId) == nullptr) {
+		if(context.findObject<esl::com::http::server::Socket>(refId) == nullptr) {
 			if(id.empty()) {
 				throw XMLException(*this, "Could not add http server reference, because referenced object with id '" + refId + "' is not a http server socket.");
 			}
@@ -149,15 +149,15 @@ void HttpServer::install(boot::context::Context& context) const {
 	context.addObject(id, create());
 }
 
-std::unique_ptr<esl::object::IObject> HttpServer::create() const {
+std::unique_ptr<esl::object::Object> HttpServer::create() const {
 	std::vector<std::pair<std::string, std::string>> eslSettings;
 	for(const auto& setting : settings) {
 		eslSettings.push_back(std::make_pair(setting.key, evaluate(setting.value, setting.language)));
 	}
 
-	std::unique_ptr<esl::com::http::server::ISocket> socket;
+	std::unique_ptr<esl::com::http::server::Socket> socket;
 	try {
-		socket = esl::plugin::Registry::get().getPlugin<esl::com::http::server::ISocket::Plugin>(implementation).create(eslSettings);
+		socket = esl::plugin::Registry::get().create<esl::com::http::server::Socket>(implementation, eslSettings);
 	}
 	catch(const std::exception& e) {
 		throw XMLException(*this, e.what());
@@ -170,7 +170,7 @@ std::unique_ptr<esl::object::IObject> HttpServer::create() const {
 		throw XMLException(*this, "Could not create a http server socket with id '" + id + "' for implementation '" + implementation + "' because interface method createSocket() returns nullptr.");
 	}
 
-	return std::unique_ptr<esl::object::IObject>(socket.release());
+	return std::unique_ptr<esl::object::Object>(socket.release());
 }
 
 void HttpServer::parseInnerElement(const tinyxml2::XMLElement& element) {

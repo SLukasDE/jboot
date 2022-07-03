@@ -22,10 +22,10 @@
 #include <jboot/processing/task/Binding.h>
 #include <jboot/processing/task/Thread.h>
 
-#include <esl/processing/task/Descriptor.h>
-#include <esl/processing/task/ITaskFactory.h>
-#include <esl/processing/task/Status.h>
-#include <esl/processing/task/Task.h>
+#include <esl/processing/TaskDescriptor.h>
+#include <esl/processing/TaskFactory.h>
+#include <esl/processing/Status.h>
+#include <esl/processing/Task.h>
 
 #include <atomic>
 #include <chrono>
@@ -43,29 +43,29 @@ namespace jboot {
 namespace processing {
 namespace task {
 
-class TaskFactory final : public esl::processing::task::ITaskFactory {
+class TaskFactory final : public esl::processing::TaskFactory {
 public:
 	friend class Binding;
 	friend class Thread;
 
-	static std::unique_ptr<esl::processing::task::ITaskFactory> create(const std::vector<std::pair<std::string, std::string>>& settings);
+	static std::unique_ptr<esl::processing::TaskFactory> create(const std::vector<std::pair<std::string, std::string>>& settings);
 
 	TaskFactory(const std::vector<std::pair<std::string, std::string>>& settings);
 	~TaskFactory();
 
-	esl::processing::task::Task createTask(esl::processing::task::Descriptor descriptor) override;
+	esl::processing::Task createTask(esl::processing::TaskDescriptor descriptor) override;
 
-	std::vector<esl::processing::task::Task> getTasks() const override;
+	std::vector<esl::processing::Task> getTasks() const override;
 
 private:
 	mutable std::mutex queueMutex; // mutable because of "getTasks() const"
-	std::list<std::pair<Binding*, std::shared_ptr<esl::processing::task::Task::Binding>>> queue;
+	std::list<std::pair<Binding*, std::shared_ptr<esl::processing::Task::Binding>>> queue;
 
 	mutable std::mutex threadsMutex; // mutable because of "getTasks() const"
 	std::condition_variable threadsCV;
 	std::atomic<unsigned int> threadsMax { 0 };
 	unsigned int threadsAvailable = 0;
-	std::map<Binding*, std::shared_ptr<esl::processing::task::Task::Binding>> threadsProcessing;
+	std::map<Binding*, std::shared_ptr<esl::processing::Task::Binding>> threadsProcessing;
 	std::condition_variable threadsFinishedCV;
 
 	bool hasThreadTimeout = false;

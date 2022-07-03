@@ -25,8 +25,8 @@ namespace jboot {
 namespace boot {
 namespace logging {
 
-std::unique_ptr<esl::boot::logging::IConfig> Config::create(const std::vector<std::pair<std::string, std::string>>& settings) {
-	return std::unique_ptr<esl::boot::logging::IConfig>(new Config(settings));
+std::unique_ptr<esl::boot::logging::Config> Config::create(const std::vector<std::pair<std::string, std::string>>& settings) {
+	return std::unique_ptr<esl::boot::logging::Config>(new Config(settings));
 }
 
 Config::Config(const std::vector<std::pair<std::string, std::string>>& settings) {
@@ -35,12 +35,12 @@ Config::Config(const std::vector<std::pair<std::string, std::string>>& settings)
     }
 }
 
-void Config::loadData(const std::string& configuration) {
+void Config::addData(const std::string& configuration) {
 	jboot::config::logging::Logger loggerConfig(configuration);
 	loggerConfig.install();
 }
 
-void Config::loadFile(const boost::filesystem::path& filename) {
+void Config::addFile(const boost::filesystem::path& filename) {
 	jboot::config::logging::Logger loggerConfig(filename);
 	loggerConfig.install();
 }

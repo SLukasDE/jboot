@@ -30,8 +30,8 @@
 namespace jboot {
 
 namespace {
-std::map<std::string, std::unique_ptr<esl::logging::ILayout>> layouts;
-std::vector<std::pair<std::string, std::unique_ptr<esl::logging::IAppender>>> appenders;
+std::map<std::string, std::unique_ptr<esl::logging::Layout>> layouts;
+std::vector<std::pair<std::string, std::unique_ptr<esl::logging::Appender>>> appenders;
 }
 
 void Logger::flush(std::ostream& oStream) {
@@ -76,13 +76,13 @@ void Logger::flush() {
 	}
 }
 */
-void Logger::addLayout(const std::string& id, std::unique_ptr<esl::logging::ILayout> layout) {
+void Logger::addLayout(const std::string& id, std::unique_ptr<esl::logging::Layout> layout) {
 	if(layouts.insert(std::make_pair(id, std::move(layout))).second == false) {
 		throw std::runtime_error("Cannot add layout with id \"" + id + "\" because it exists already");
 	}
 }
 
-void Logger::addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::IAppender> appender) {
+void Logger::addAppender(const std::string& name, const std::string& layoutRefId, std::unique_ptr<esl::logging::Appender> appender) {
 	auto iter = layouts.find(layoutRefId);
 	if(iter == std::end(layouts)) {
 		throw std::runtime_error("Appender is referencing an undefined layout \"" + layoutRefId + "\"");

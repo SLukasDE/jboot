@@ -23,22 +23,23 @@
 
 #include <eslx/Plugin.h>
 
-#include <esl/boot/context/IContext.h>
-#include <esl/boot/logging/IConfig.h>
-#include <esl/com/basic/client/IConnectionFactory.h>
-#include <esl/com/basic/server/ISocket.h>
-#include <esl/com/http/client/IConnectionFactory.h>
-#include <esl/com/http/server/ISocket.h>
-#include <esl/database/IConnectionFactory.h>
-#include <esl/logging/ILogger.h>
-#include <esl/logging/IAppender.h>
-#include <esl/logging/ILayout.h>
+#include <esl/boot/context/Context.h>
+#include <esl/boot/logging/Config.h>
+#include <esl/com/basic/client/ConnectionFactory.h>
+#include <esl/com/basic/server/Socket.h>
+#include <esl/com/http/client/ConnectionFactory.h>
+#include <esl/com/http/server/Socket.h>
+#include <esl/database/ConnectionFactory.h>
+#include <esl/logging/Logging.h>
+#include <esl/logging/Appender.h>
+#include <esl/logging/Layout.h>
 #include <esl/plugin/Registry.h>
-#include <esl/processing/task/ITaskFactory.h>
-#include <esl/system/stacktrace/IStacktrace.h>
-#include <esl/system/process/IProcess.h>
-#include <esl/system/signal/ISignal.h>
+#include <esl/processing/TaskFactory.h>
+#include <esl/system/Process.h>
+#include <esl/system/Signal.h>
+#include <esl/system/Stacktrace.h>
 
+#include <iostream>
 namespace jboot {
 
 void Plugin::install(esl::plugin::Registry& registry, const char* data) {
@@ -46,95 +47,56 @@ void Plugin::install(esl::plugin::Registry& registry, const char* data) {
 
 	eslx::Plugin::install(registry, data);
 
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::boot::context::IContext::Plugin(
-			"jboot/boot/context/Context",
-//			"jboot::boot::context::Context",
-//			"jboot@/esl/boot/context",
-//			"jboot@/esl/boot/context/Context",
-//			"jboot/context",
-			&boot::context::Context::create)));
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::boot::logging::IConfig::Plugin(
-			"jboot/boot/logging/Config",
-			&boot::logging::Config::create)));
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::processing::task::ITaskFactory::Plugin(
-			"jboot/processing/task/TaskFactory",
-			&processing::task::TaskFactory::create)));
-
-	/* ************************* *
-	 * builtin logging appenders *
-	 * ************************* */
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::logging::ILogger::Plugin(
-			"jboot/logging/Logger",
-			esl::plugin::Registry::get().getPlugin<esl::logging::ILogger::Plugin>("logbook4esl/logging/Logger").create)));
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::logging::IAppender::Plugin(
-			"jboot/logging/appender/MemBuffer",
-			esl::plugin::Registry::get().getPlugin<esl::logging::IAppender::Plugin>("eslx/logging/appender/MemBuffer").create)));
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::logging::IAppender::Plugin(
-			"jboot/logging/appender/OStream",
-			esl::plugin::Registry::get().getPlugin<esl::logging::IAppender::Plugin>("eslx/logging/appender/OStream").create)));
-
+	/* ************ *
+	 * esl::logging *
+	 * ************ */
+	registry.copyPlugin<esl::logging::Logging>("logbook4esl/logging/Logging", "jboot/logging/Logging");
+	registry.copyPlugin<esl::logging::Layout>("eslx/logging/DefaultLayout", "jboot/logging/DefaultLayout");
+	registry.copyPlugin<esl::logging::Appender>("eslx/logging/MemBufferAppender", "jboot/logging/MemBufferAppender");
+	registry.copyPlugin<esl::logging::Appender>("eslx/logging/OStreamAppender", "jboot/logging/OStreamAppender");
 #if 0
 	module.addInterface(esl::logging::appender::Interface::createInterface(
 			"jboot/logging/appender/Humio",
 			esl::getModule().getInterface<esl::logging::appender::Interface>("humio4esl/logging/appender/Appender").createAppender));
 #endif
-	/* *********************** *
-	 * builtin logging layouts *
-	 * *********************** */
 
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::logging::ILayout::Plugin(
-			"jboot/logging/layout/Default",
-			esl::plugin::Registry::get().getPlugin<esl::logging::ILayout::Plugin>("eslx/logging/layout/Default").create)));
-/*
-	module.addInterface(esl::object::Interface::createInterface(
-			"jboot/object/KafkaBroker",
-			esl::getModule().getInterface<esl::object::Interface>("rdkafka4esl").createObject));
+	/* ********* *
+	 * esl::boot *
+	 * ********* */
+	registry.addPlugin<esl::boot::context::Context>("jboot/boot/context/Context", &boot::context::Context::create);
+	registry.addPlugin<esl::boot::logging::Config>("jboot/boot/logging/Config", &boot::logging::Config::create);
 
-	module.addInterface(esl::com::basic::client::Interface::createInterface(
-			"jboot/com/basic/client/KafkaConnectionFactory",
-			esl::getModule().getInterface<esl::com::basic::client::Interface>("rdkafka4esl").createConnectionFactory));
+	/* *************** *
+	 * esl::com::basic *
+	 * *************** */
+	registry.copyPlugin<esl::object::Object>("rdkafka4esl/com/basic/broker/Client", "jboot/object/KafkaClient");
+	registry.copyPlugin<esl::com::basic::client::ConnectionFactory>("rdkafka4esl/com/basic/client/ConnectionFactory", "jboot/com/basic/client/KafkaConnectionFactory");
+	registry.copyPlugin<esl::com::basic::server::Socket>("rdkafka4esl/com/basic/server/Socket", "jboot/com/basic/server/KafkaSocket");
 
-	module.addInterface(esl::com::basic::server::Interface::createInterface(
-			"jboot/com/basic/server/KafkaSocket",
-			esl::getModule().getInterface<esl::com::basic::server::Interface>("rdkafka4esl").createSocket));
-*/
+	/* ************** *
+	 * esl::com::http *
+	 * ************** */
+	registry.copyPlugin<esl::com::http::client::ConnectionFactory>("curl4esl/com/http/client/ConnectionFactory", "jboot/com/http/client/ConnectionFactory");
+	registry.copyPlugin<esl::com::http::server::Socket>("mhd4esl/com/http/server/Socket", "jboot/com/http/server/Socket");
 
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::com::http::client::IConnectionFactory::Plugin(
-			"jboot/com/http/client/ConnectionFactory",
-			esl::plugin::Registry::get().getPlugin<esl::com::http::client::IConnectionFactory::Plugin>("curl4esl/com/http/client/ConnectionFactory").create)));
+	/* ************* *
+	 * esl::database *
+	 * ************* */
+	registry.copyPlugin<esl::database::ConnectionFactory>("sqlite4esl/database/ConnectionFactory", "jboot/database/SqliteConnectionFactory");
+	registry.copyPlugin<esl::database::ConnectionFactory>("unixODBC4esl/database/ConnectionFactory", "jboot/database/UnixODBCConnectionFactory");
 
-/*
-	module.addInterface(esl::com::http::server::Interface::createInterface(
-			"jboot/com/http/server/Socket",
-			esl::getModule().getInterface<esl::com::http::server::Interface>("mhd4esl").createSocket));
-*/
+	/* *************** *
+	 * esl::processing *
+	 * *************** */
+	registry.addPlugin<esl::processing::TaskFactory>("jboot/processing/TaskFactory", &processing::task::TaskFactory::create);
 
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::system::stacktrace::IStacktrace::Plugin(
-			"jboot/system/stacktrace/Stacktrace",
-			esl::plugin::Registry::get().getPlugin<esl::system::stacktrace::IStacktrace::Plugin>("zsystem4esl/system/stacktrace/Stacktrace").create)));
+	/* *********** *
+	 * esl::system *
+	 * *********** */
+	registry.copyPlugin<esl::system::Stacktrace>("zsystem4esl/system/stacktrace/Stacktrace", "jboot/system/Stacktrace");
+	registry.copyPlugin<esl::system::Process>("zsystem4esl/system/process/Process", "jboot/system/Process");
+	registry.copyPlugin<esl::system::Signal>("zsystem4esl/system/signal/Signal", "jboot/system/Signal");
 
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::system::process::IProcess::Plugin(
-			"jboot/system/process/Process",
-			esl::plugin::Registry::get().getPlugin<esl::system::process::IProcess::Plugin>("zsystem4esl/system/process/Process").create)));
-
-	registry.addPlugin(std::unique_ptr<const esl::plugin::BasePlugin>(new esl::system::signal::ISignal::Plugin(
-			"jboot/system/signal/Signal",
-			esl::plugin::Registry::get().getPlugin<esl::system::signal::ISignal::Plugin>("zsystem4esl/system/signal/Signal").create)));
-
-/*
-	module.addInterface(esl::database::Interface::createInterface(
-			"jboot/database/SQLiteConnectionFactory",
-			esl::getModule().getInterface<esl::database::Interface>("sqlite4esl").createConnectionFactory));
-
-	module.addInterface(esl::database::Interface::createInterface(
-			"jboot/database/UnixODBCConnectionFactory",
-			esl::getModule().getInterface<esl::database::Interface>("unixODBC4esl").createConnectionFactory));
-*/
 }
 
 } /* namespace jboot */

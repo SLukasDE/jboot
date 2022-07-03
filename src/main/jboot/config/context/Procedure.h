@@ -23,7 +23,7 @@
 #include <jboot/config/Setting.h>
 #include <jboot/boot/context/Context.h>
 
-#include <esl/object/IObject.h>
+#include <esl/object/Object.h>
 
 #include <tinyxml2/tinyxml2.h>
 
@@ -44,7 +44,7 @@ public:
 	void install(boot::context::Context& context) const;
 
 protected:
-	std::unique_ptr<esl::object::IObject> create() const;
+	std::unique_ptr<esl::object::Object> create() const;
 
 private:
 	std::string id;

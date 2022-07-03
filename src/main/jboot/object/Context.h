@@ -16,8 +16,8 @@
  * License along with JBoot.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <esl/object/IContext.h>
-#include <esl/object/IObject.h>
+#include <esl/object/Context.h>
+#include <esl/object/Object.h>
 
 #include <map>
 #include <memory>
@@ -30,17 +30,17 @@
 namespace jboot {
 namespace object {
 
-class Context : public esl::object::IContext {
+class Context : public esl::object::Context {
 public:
 	std::set<std::string> getObjectIds() const override;
 
 protected:
-	void addRawObject(const std::string& id, std::unique_ptr<esl::object::IObject> object) override;
-	esl::object::IObject* findRawObject(const std::string& id) override;
-	const esl::object::IObject* findRawObject(const std::string& id) const override;
+	void addRawObject(const std::string& id, std::unique_ptr<esl::object::Object> object) override;
+	esl::object::Object* findRawObject(const std::string& id) override;
+	const esl::object::Object* findRawObject(const std::string& id) const override;
 
 private:
-	std::map<std::string, std::unique_ptr<esl::object::IObject>> objects;
+	std::map<std::string, std::unique_ptr<esl::object::Object>> objects;
 };
 
 } /* namespace object */

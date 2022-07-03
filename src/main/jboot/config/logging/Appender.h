@@ -22,7 +22,7 @@
 #include <jboot/config/Config.h>
 #include <jboot/config/Setting.h>
 
-#include <esl/logging/IAppender.h>
+#include <esl/logging/Appender.h>
 
 #include <tinyxml2/tinyxml2.h>
 
@@ -44,11 +44,11 @@ public:
 
 	void save(std::ostream& oStream, std::size_t spaces) const;
 
-	std::unique_ptr<esl::logging::IAppender> create() const;
+	std::unique_ptr<esl::logging::Appender> create() const;
 
 private:
 	std::string name;
-	esl::logging::IAppender::RecordLevel recordLevel = esl::logging::IAppender::RecordLevel::SELECTED;
+	esl::logging::Appender::RecordLevel recordLevel = esl::logging::Appender::RecordLevel::SELECTED;
 	std::string layoutId;
 	std::string implementation;
 	std::vector<Setting> parameters;
